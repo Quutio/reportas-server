@@ -1,0 +1,26 @@
+
+syntax = "proto3";
+
+package report;
+
+message ReportMessage {
+
+    string reporterUUID = 1;
+    string reportedUUID = 2;
+
+    string description = 3;
+
+}
+
+message ReportRequest {
+    ReportMessage msg = 1;
+}
+
+message ReportResponse {
+    ReportMessage msg = 1;
+}
+
+service ReportHandler {
+
+    rpc SubmitReport (ReportRequest) returns (ReportResponse);
+}
