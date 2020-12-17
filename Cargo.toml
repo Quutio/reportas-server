@@ -1,5 +1,5 @@
 [package]
-name = "reportas-msa"
+name = "reportas-server"
 version = "0.1.0"
 authors = ["osk <tgv.alpha@gmail.com>"]
 edition = "2018"
