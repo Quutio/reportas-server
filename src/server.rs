@@ -1,3 +1,7 @@
+
+extern crate clap;
+use clap::{Arg, App};
+
 use tonic::{transport::Server, Request, Response, Status};
 
 use report::report_handler_server::{ReportHandler, ReportHandlerServer};
@@ -37,7 +41,30 @@ impl ReportHandler for MainReportHandler {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    let addr = "[::1]:50051".parse()?;
+    let matches = App::new("reportas-server")
+        .version("0.1.0")
+        .author("7Gv")
+        .arg(Arg::with_name("address")
+             .short("a")
+             .long("address")
+             .required(true)
+             .value_name("ADDRESS")
+             .help("Given address for server to listen to")
+             .takes_value(true))
+        .arg(Arg::with_name("port")
+             .short("p")
+             .long("port")
+             .required(true)
+             .value_name("PORT")
+             .help("Given TCP port for server to listen to")
+             .takes_value(true))
+        .get_matches();
+
+    let addr = format!(
+        "{}:{}",
+        matches.value_of("address").unwrap(),
+        matches.value_of("port").unwrap()).parse()?;
+
     let report_handler = MainReportHandler::default();
 
     Server::builder()
