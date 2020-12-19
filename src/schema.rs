@@ -1,8 +1,8 @@
 table! {
     reports (id) {
-        id -> Int8,
-        reported -> Varchar,
-        reporter -> Varchar,
-        desc -> Varchar,
+        id -> Int4,
+        reported -> Text,
+        reporter -> Text,
+        description -> Text,
     }
 }

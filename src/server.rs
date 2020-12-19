@@ -1,6 +1,8 @@
 extern crate clap;
+
 use clap::{App, Arg};
 
+use service::{NewReport, establish_connection, insert_report};
 use tonic::{transport::Server, Request, Response, Status};
 
 use futures::{Stream, StreamExt};
@@ -36,10 +38,18 @@ impl ReportHandler for MainReportHandler {
             .expect("The request was a malformed request");
 
         let msg = ReportMessage {
-            reporter: req_msg.reporter,
-            reported: req_msg.reported,
-            desc: req_msg.desc,
+            reporter: req_msg.reporter.clone(),
+            reported: req_msg.reported.clone(),
+            desc: req_msg.desc.clone(),
         };
+
+        let new_report = NewReport {
+            reporter: req_msg.reporter.as_str(),
+            reported: req_msg.reported.as_str(),
+            description: req_msg.desc.as_str(),
+        };
+
+        insert_report(new_report).unwrap();
 
         let resp = report::ReportResponse { msg: Some(msg) };
 
