@@ -41,6 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut client = ReportHandlerClient::connect(domain).await?;
 
+
     let msg = ReportMessage {
         reporter: uuid::Uuid::new_v4().to_string(),
         reported: uuid::Uuid::new_v4().to_string(),
@@ -52,6 +53,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let resp = client.submit_report(request).await?;
 
     println!("RESPONSE: {:?}", resp);
+
+    /*
+    match matches.value_of("jobs").unwrap() {
+
+        "insert-rand" => {
+
+            let msg = ReportMessage {
+                reporter: uuid::Uuid::new_v4().to_string(),
+                reported: uuid::Uuid::new_v4().to_string(),
+                desc: "joujou".into(),
+            };
+
+            let request = tonic::Request::new(ReportRequest { msg: Some(msg) });
+
+            let resp = client.submit_report(request).await?;
+
+            println!("RESPONSE: {:?}", resp);
+
+        },
+        "query-all" => {
+
+            let rep_query = ReportQuery {
+                query: "none".into(),
+                id: 0,
+            };
+
+            let mut stream = client
+                .query_all_reports(rep_query)
+                .await?.into_inner();
+
+            while let Some(report) = stream.message().await? {
+                println!("rep = {:?}", report);
+            }
+        },
+        _ => {
+            println!("No jobs found");
+        },
+    };
+    */
 
     Ok(())
 }
