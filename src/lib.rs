@@ -23,6 +23,21 @@ pub enum QueryType {
     ById(i32),
 }
 
+///
+/// Query reports by a query type.
+///
+/// # Arguments
+///
+/// * `query_type` - `QueryType` enum with a required value.
+///
+/// # Examples
+///
+/// ```
+/// use models::QueryType;
+///
+/// let queried = query_report(QueryType::ById(420));
+/// ```
+///
 pub fn query_report(query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
     use schema::reports::dsl::*;
 
@@ -48,12 +63,16 @@ pub fn query_report(query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>
     Ok(res)
 }
 
-pub fn insert_report(new_report: NewReport) -> Result<(), Box<dyn Error>> {
+///
+/// Insert a report.
+///
+pub fn insert_report(new_report: &NewReport) -> Result<(), Box<dyn Error>> {
+
     use schema::reports::dsl::*;
 
     let conn = establish_connection();
 
-    insert_into(reports).values(&new_report).execute(&conn)?;
+    insert_into(reports).values(new_report).execute(&conn)?;
 
     Ok(())
 }

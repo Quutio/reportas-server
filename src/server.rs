@@ -1,4 +1,5 @@
 extern crate clap;
+mod transporter;
 
 use clap::{App, Arg};
 
@@ -60,7 +61,7 @@ impl ReportHandler for MainReportHandler {
             description: req_msg.desc.as_str(),
         };
 
-        insert_report(new_report).unwrap();
+        insert_report(&new_report).expect("[!] data insertion failed");
 
         let resp = report::ReportResponse { msg: Some(msg) };
 
@@ -157,6 +158,7 @@ impl ReportHandler for MainReportHandler {
         for rep in queried.iter() {
 
             let irm = IdentifiedReportMessage {
+
                 id: rep.id as i64,
                 reporter: rep.reporter.clone(),
                 reported: rep.reported.clone(),
