@@ -4,6 +4,8 @@ use clap::{App, Arg};
 use report::report_handler_client::ReportHandlerClient;
 use report::{ReportMessage, ReportRequest};
 
+mod transporter;
+
 pub mod report {
     tonic::include_proto!("report");
 }
@@ -34,13 +36,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_matches();
 
     let domain = format!(
-        "https://{}:{}",
+        "{}:{}",
         matches.value_of("address").unwrap(),
         matches.value_of("port").unwrap()
     );
 
-    let mut client = ReportHandlerClient::connect(domain).await?;
+    let msg = transporter::report::IdentifiedReportMessage {
+        id: 1,
+        reporter: "jeajea".into(),
+        reported: "joujea".into(),
+        desc: "jdsojdoasjdoja".into(),
+    };
 
+    transporter::transport(msg).await?;
+
+    /*
+    let mut client = ReportHandlerClient::connect(domain).await?;
 
     let msg = ReportMessage {
         reporter: uuid::Uuid::new_v4().to_string(),
@@ -54,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("RESPONSE: {:?}", resp);
 
+    */
     /*
     match matches.value_of("jobs").unwrap() {
 
