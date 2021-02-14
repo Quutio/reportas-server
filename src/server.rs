@@ -61,7 +61,18 @@ impl ReportHandler for MainReportHandler {
             description: req_msg.desc.as_str(),
         };
 
-        insert_report(&new_report).expect("[!] data insertion failed");
+        let rep = insert_report(&new_report).expect("[!] data insertion failed");
+
+        println!("id -> {}", rep.id);
+
+        let irm = transporter::report::IdentifiedReportMessage {
+            id: rep.id,
+            reporter: rep.reporter,
+            reported: rep.reported,
+            desc: rep.description,
+        };
+
+        transporter::transport(irm).await;
 
         let resp = report::ReportResponse { msg: Some(msg) };
 
@@ -191,7 +202,7 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<IdentifiedReportMessage>, Status> {
 
         let query = request.into_inner().id;
-        let queried = query_report(service::QueryType::ById(query as i32)).unwrap();
+        let queried = query_report(service::QueryType::ById(query as i64)).unwrap();
 
         let res = IdentifiedReportMessage {
             id: queried[0].id as i64,

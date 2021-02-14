@@ -2,7 +2,7 @@ use crate::schema::reports;
 
 #[derive(Queryable, Debug, PartialEq)]
 pub struct Report {
-    pub id: i32,
+    pub id: i64,
 
     pub reporter: String,
     pub reported: String,

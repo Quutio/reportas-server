@@ -20,7 +20,7 @@ pub enum QueryType {
     ALL,
     ByReporter(String),
     ByReported(String),
-    ById(i32),
+    ById(i64),
 }
 
 ///
@@ -66,15 +66,15 @@ pub fn query_report(query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>
 ///
 /// Insert a report.
 ///
-pub fn insert_report(new_report: &NewReport) -> Result<(), Box<dyn Error>> {
+pub fn insert_report(new_report: &NewReport) -> Result<Report, Box<dyn Error>> {
 
     use schema::reports::dsl::*;
 
     let conn = establish_connection();
 
-    insert_into(reports).values(new_report).execute(&conn)?;
+    let res = insert_into(reports).values(new_report).get_result::<Report>(&conn)?;
 
-    Ok(())
+    Ok(res)
 }
 
 ///

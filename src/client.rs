@@ -36,10 +36,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_matches();
 
     let domain = format!(
-        "{}:{}",
+        "http://{}:{}",
         matches.value_of("address").unwrap(),
         matches.value_of("port").unwrap()
     );
+
+    /*
 
     let msg = transporter::report::IdentifiedReportMessage {
         id: 1,
@@ -50,7 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     transporter::transport(msg).await?;
 
-    /*
+    */
+
+
     let mut client = ReportHandlerClient::connect(domain).await?;
 
     let msg = ReportMessage {
@@ -65,7 +69,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("RESPONSE: {:?}", resp);
 
-    */
     /*
     match matches.value_of("jobs").unwrap() {
 

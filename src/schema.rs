@@ -1,6 +1,6 @@
 table! {
     reports (id) {
-        id -> Int4,
+        id -> BigInt,
         reported -> Text,
         reporter -> Text,
         description -> Text,
