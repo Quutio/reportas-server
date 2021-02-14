@@ -6,7 +6,7 @@ extern crate diesel;
 
 extern crate dotenv;
 
-use diesel::prelude::*;
+use diesel::{r2d2::ConnectionManager, prelude::*};
 use diesel::{insert_into, pg::PgConnection};
 
 use dotenv::dotenv;
@@ -21,6 +21,72 @@ pub enum QueryType {
     ByReporter(String),
     ByReported(String),
     ById(i64),
+}
+
+pub trait ReportDb<M>
+where
+    M: diesel::r2d2::ManageConnection
+{
+    fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>>;
+
+    fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
+}
+
+pub struct PgReportDb {
+    pool: diesel::r2d2::Pool<ConnectionManager<PgConnection>>,
+}
+
+impl PgReportDb {
+
+    pub fn new(addr: &str) -> Result<Self, Box<dyn Error>> {
+
+        let manager = ConnectionManager::<PgConnection>::new(addr);
+        let pool = diesel::r2d2::Pool::builder().build(manager)?;
+
+        Ok( Self { pool } )
+    }
+}
+
+impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
+
+    fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>> {
+        use schema::reports::dsl::*;
+
+        let res = insert_into(reports).values(new_report).get_result::<Report>(&self.pool.get().unwrap())?;
+
+        Ok(res)
+    }
+
+    fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
+
+        use schema::reports::dsl::*;
+
+        let res: Vec<Report>;
+
+        match query_type {
+            QueryType::ALL => {
+                res = reports
+                    .load(&self.pool.get().unwrap())?;
+            }
+            QueryType::ByReporter(value) => {
+                res = reports
+                    .filter(reporter.eq(value))
+                    .load::<Report>(&self.pool.get().unwrap())?;
+            }
+            QueryType::ByReported(value) => {
+                res = reports
+                    .filter(reported.eq(value))
+                    .load::<Report>(&self.pool.get().unwrap())?;
+            }
+            QueryType::ById(value) => {
+                res = reports
+                    .filter(id.eq(value))
+                    .load::<Report>(&self.pool.get().unwrap())?;
+            }
+        }
+
+        Ok(res)
+    }
 }
 
 ///

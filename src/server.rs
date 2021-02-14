@@ -1,10 +1,13 @@
 extern crate clap;
+extern crate dotenv;
+
 mod transporter;
 
 use clap::{App, Arg};
 
 use service::models::{NewReport};
 use service::{insert_report, query_report};
+use service::*;
 
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -21,9 +24,23 @@ pub mod report {
     tonic::include_proto!("report");
 }
 
-#[derive(Debug, Default)] // <- debug purposes
 pub struct MainReportHandler {
+    db: PgReportDb,
     results: Arc<Mutex<Vec<IdentifiedReportMessage>>>,
+}
+
+impl MainReportHandler {
+    pub fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
+
+        let db = PgReportDb::new(addr).unwrap();
+
+        Ok(
+            MainReportHandler {
+                db: db,
+                results: Arc::new(Mutex::new(Vec::<IdentifiedReportMessage>::new()))
+            }
+        )
+    }
 }
 
 #[allow(unused_variables)]
@@ -61,7 +78,7 @@ impl ReportHandler for MainReportHandler {
             description: req_msg.desc.as_str(),
         };
 
-        let rep = insert_report(&new_report).expect("[!] data insertion failed");
+        let rep = self.db.insert_report(&new_report).expect("[!] data insertion failed");
 
         println!("id -> {}", rep.id);
 
@@ -88,7 +105,7 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<Self::QueryAllReportsStream>, Status> {
 
         let query = request.into_inner().query;
-        let queried = query_report(service::QueryType::ALL).unwrap();
+        let queried = self.db.query_report(service::QueryType::ALL).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 
@@ -125,7 +142,7 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<Self::QueryReportsByReporterStream>, Status> {
 
         let query = request.into_inner().query;
-        let queried = query_report(service::QueryType::ByReporter(query)).unwrap();
+        let queried = self.db.query_report(service::QueryType::ByReporter(query)).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 
@@ -162,7 +179,7 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<Self::QueryReportsByReportedStream>, Status> {
 
         let query = request.into_inner().query;
-        let queried = query_report(service::QueryType::ByReported(query)).unwrap();
+        let queried = self.db.query_report(service::QueryType::ByReported(query)).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 
@@ -202,7 +219,7 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<IdentifiedReportMessage>, Status> {
 
         let query = request.into_inner().id;
-        let queried = query_report(service::QueryType::ById(query as i64)).unwrap();
+        let queried = self.db.query_report(service::QueryType::ById(query as i64)).unwrap();
 
         let res = IdentifiedReportMessage {
             id: queried[0].id as i64,
@@ -217,6 +234,7 @@ impl ReportHandler for MainReportHandler {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
     let matches = App::new("reportas-server")
         .version("0.1.0")
         .author("7Gv")
@@ -247,7 +265,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .parse()?;
 
-    let report_handler = MainReportHandler::default();
+    let report_handler = MainReportHandler::new(&dotenv::var("DATABASE_URL").unwrap())?;
 
     println!("\nLISTENING TO CHANNEL BEGUN: {}\n", &addr);
 
