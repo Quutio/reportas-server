@@ -65,17 +65,18 @@ impl ReportHandler for MainReportHandler {
         println!("\nREQUEST:\n{:?}\n", request);
 
         let req_msg = request.into_inner().msg.expect("\nBAD REQUEST :: 400\n");
+        let req_clone = req_msg.clone();
 
         let msg = ReportMessage {
-            reporter: req_msg.reporter.clone(),
-            reported: req_msg.reported.clone(),
-            desc: req_msg.desc.clone(),
+            reporter: req_msg.reporter,
+            reported: req_msg.reported,
+            desc: req_msg.desc,
         };
 
         let new_report = NewReport {
-            reporter: req_msg.reporter.as_str(),
-            reported: req_msg.reported.as_str(),
-            description: req_msg.desc.as_str(),
+            reporter: req_clone.reporter.as_str(),
+            reported: req_clone.reported.as_str(),
+            description: req_clone.desc.as_str(),
         };
 
         let rep = self.db.insert_report(&new_report).expect("[!] data insertion failed");
