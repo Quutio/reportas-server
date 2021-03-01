@@ -67,6 +67,9 @@ impl ReportHandler for MainReportHandler {
         let req_msg = request.into_inner().msg.expect("\nBAD REQUEST :: 400\n");
         let req_clone = req_msg.clone();
 
+        let utc = chrono::Utc::now();
+        let ts = utc.timestamp();
+
         let msg = ReportMessage {
             reporter: req_msg.reporter,
             reported: req_msg.reported,
@@ -74,6 +77,8 @@ impl ReportHandler for MainReportHandler {
         };
 
         let new_report = NewReport {
+            active: true,
+            timestamp: ts,
             reporter: req_clone.reporter.as_str(),
             reported: req_clone.reported.as_str(),
             description: req_clone.desc.as_str(),
@@ -84,10 +89,12 @@ impl ReportHandler for MainReportHandler {
         println!("id -> {}", rep.id);
 
         let irm = transporter::report::IdentifiedReportMessage {
-            id: rep.id,
-            reporter: rep.reporter,
-            reported: rep.reported,
-            desc: rep.description,
+            id:         rep.id,
+            active:     rep.active,
+            timestamp:  rep.timestamp,
+            reporter:   rep.reporter,
+            reported:   rep.reported,
+            desc:       rep.description,
         };
 
         transporter::transport(irm).await;
@@ -112,10 +119,12 @@ impl ReportHandler for MainReportHandler {
 
         for rep in queried.iter() {
             let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                desc: rep.description.clone(),
+                id:         rep.id as i64,
+                active:     rep.active,
+                timestamp:  rep.timestamp,
+                reporter:   rep.reporter.clone(),
+                reported:   rep.reported.clone(),
+                desc:       rep.description.clone(),
             };
 
             irms.push(irm);
@@ -149,10 +158,12 @@ impl ReportHandler for MainReportHandler {
 
         for rep in queried.iter() {
             let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                desc: rep.description.clone(),
+                id:         rep.id as i64,
+                active:     rep.active,
+                timestamp:  rep.timestamp,
+                reporter:   rep.reporter.clone(),
+                reported:   rep.reported.clone(),
+                desc:       rep.description.clone(),
             };
 
             irms.push(irm);
@@ -188,10 +199,12 @@ impl ReportHandler for MainReportHandler {
 
             let irm = IdentifiedReportMessage {
 
-                id: rep.id as i64,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                desc: rep.description.clone(),
+                id:         rep.id as i64,
+                active:     rep.active,
+                timestamp:  rep.timestamp,
+                reporter:   rep.reporter.clone(),
+                reported:   rep.reported.clone(),
+                desc:       rep.description.clone(),
             };
 
             irms.push(irm);
@@ -223,10 +236,12 @@ impl ReportHandler for MainReportHandler {
         let queried = self.db.query_report(service::QueryType::ById(query as i64)).unwrap();
 
         let res = IdentifiedReportMessage {
-            id: queried[0].id as i64,
-            reporter: queried[0].reporter.clone(),
-            reported: queried[0].reported.clone(),
-            desc: queried[0].reported.clone(),
+            id:         queried[0].id as i64,
+            active:     queried[0].active,
+            timestamp:  queried[0].timestamp,
+            reporter:   queried[0].reporter.clone(),
+            reported:   queried[0].reported.clone(),
+            desc:       queried[0].reported.clone(),
         };
 
         Ok(Response::new(res))
