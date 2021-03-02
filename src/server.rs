@@ -15,7 +15,7 @@ use tonic::{transport::Server, Request, Response, Status};
 use tokio::sync::mpsc;
 
 use report::report_handler_server::{ReportHandler, ReportHandlerServer};
-use report::{IdentifiedReportMessage, ReportMessage, ReportQuery, ReportRequest, ReportResponse};
+use report::{IdentifiedReportMessage, ReportMessage, ReportQuery, ReportRequest, ReportResponse, ReportId};
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -50,6 +50,7 @@ impl ReportHandler for MainReportHandler {
     type QueryAllReportsStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByReporterStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByReportedStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
+    type QueryReportsByTimestampStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
 
     ///
     /// Handle a (gRPC) report submission:
@@ -102,6 +103,26 @@ impl ReportHandler for MainReportHandler {
         let resp = report::ReportResponse { msg: Some(msg) };
 
         Ok(Response::new(resp))
+    }
+
+    async fn deactivate_report(
+        &self,
+        request: Request<ReportId>
+    ) ->Result<Response<IdentifiedReportMessage>, tonic::Status> {
+
+        let rep = self.db.deactivate_report(request.into_inner().id).unwrap();
+
+        let irm = report::IdentifiedReportMessage {
+            id:         rep.id,
+            active:     rep.active,
+            timestamp:  rep.timestamp,
+            reporter:   rep.reporter,
+            reported:   rep.reported,
+            desc:       rep.description,
+        };
+
+        Ok(Response::new(irm))
+
     }
 
     ///
@@ -192,6 +213,43 @@ impl ReportHandler for MainReportHandler {
 
         let query = request.into_inner().query;
         let queried = self.db.query_report(service::QueryType::ByReported(query)).unwrap();
+
+        let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        for rep in queried.iter() {
+
+            let irm = IdentifiedReportMessage {
+
+                id:         rep.id as i64,
+                active:     rep.active,
+                timestamp:  rep.timestamp,
+                reporter:   rep.reporter.clone(),
+                reported:   rep.reported.clone(),
+                desc:       rep.description.clone(),
+            };
+
+            irms.push(irm);
+        }
+
+        let (mut tx, rx) = mpsc::channel(4);
+        let res = Arc::new(irms);
+
+        tokio::spawn(async move {
+            for result in &res[..] {
+                tx.send(Ok(result.clone())).await.unwrap();
+            }
+        });
+
+        Ok(Response::new(rx))
+    }
+
+    async fn query_reports_by_timestamp(
+        &self,
+        request: Request<ReportQuery>,
+    ) -> Result<Response<Self::QueryReportsByTimestampStream>, tonic::Status> {
+
+        let query = request.into_inner().query;
+        let queried = self.db.query_report(service::QueryType::ByTimestamp(query.parse::<i64>().unwrap())).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 

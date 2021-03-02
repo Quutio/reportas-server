@@ -7,7 +7,7 @@ extern crate diesel;
 extern crate dotenv;
 
 use diesel::{r2d2::ConnectionManager, prelude::*};
-use diesel::{insert_into, pg::PgConnection};
+use diesel::{insert_into, update, pg::PgConnection};
 
 use dotenv::dotenv;
 
@@ -20,6 +20,7 @@ pub enum QueryType {
     ALL,
     ByReporter(String),
     ByReported(String),
+    ByTimestamp(i64),
     ById(i64),
 }
 
@@ -30,6 +31,8 @@ where
     fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>>;
 
     fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
+
+    fn deactivate_report(&self, id: i64) -> Result<Report, Box<dyn Error>>;
 }
 
 pub struct PgReportDb {
@@ -57,6 +60,16 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
         Ok(res)
     }
 
+    fn deactivate_report(&self, identifier: i64) -> Result<Report, Box<dyn Error>> {
+        use schema::reports::dsl::*;
+
+        let res = update(reports.filter(id.eq(identifier)))
+            .set(active.eq(false))
+            .get_result::<Report>(&self.pool.get().unwrap())?;
+
+        Ok(res)
+    }
+
     fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
 
         use schema::reports::dsl::*;
@@ -76,6 +89,11 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
             QueryType::ByReported(value) => {
                 res = reports
                     .filter(reported.eq(value))
+                    .load::<Report>(&self.pool.get().unwrap())?;
+            }
+            QueryType::ByTimestamp(value) => {
+                res = reports
+                    .filter(timestamp.le(value))
                     .load::<Report>(&self.pool.get().unwrap())?;
             }
             QueryType::ById(value) => {
@@ -120,6 +138,9 @@ pub fn query_report(query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>
         }
         QueryType::ByReported(value) => {
             res = reports.filter(reported.eq(value)).load::<Report>(&conn)?;
+        }
+        QueryType::ByTimestamp(value) => {
+            res = reports.filter(timestamp.le(value)).load::<Report>(&conn)?;
         }
         QueryType::ById(value) => {
             res = reports.filter(id.eq(value)).load::<Report>(&conn)?;
