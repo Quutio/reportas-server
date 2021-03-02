@@ -6,7 +6,6 @@ mod transporter;
 use clap::{App, Arg};
 
 use service::models::{NewReport};
-use service::{insert_report, query_report};
 use service::*;
 
 use tonic::{transport::Server, Request, Response, Status};
@@ -26,7 +25,7 @@ pub mod report {
 
 pub struct MainReportHandler {
     db: PgReportDb,
-    results: Arc<Mutex<Vec<IdentifiedReportMessage>>>,
+    _results: Arc<Mutex<Vec<IdentifiedReportMessage>>>,
 }
 
 impl MainReportHandler {
@@ -37,7 +36,7 @@ impl MainReportHandler {
         Ok(
             MainReportHandler {
                 db: db,
-                results: Arc::new(Mutex::new(Vec::<IdentifiedReportMessage>::new()))
+                _results: Arc::new(Mutex::new(Vec::<IdentifiedReportMessage>::new()))
             }
         )
     }
@@ -98,7 +97,12 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
-        transporter::transport(irm).await;
+        match transporter::transport(irm).await {
+            Ok(_) => {},
+            Err(err) => {
+                return Err(Status::aborted("Failed to transport request."))
+            },
+        };
 
         let resp = report::ReportResponse { msg: Some(msg) };
 
@@ -110,7 +114,9 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportId>
     ) ->Result<Response<IdentifiedReportMessage>, tonic::Status> {
 
-        let rep = self.db.deactivate_report(request.into_inner().id).unwrap();
+        let id = request.into_inner().id;
+
+        let rep = self.db.deactivate_report(id).unwrap();
 
         let irm = report::IdentifiedReportMessage {
             id:         rep.id,
@@ -121,8 +127,14 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
-        Ok(Response::new(irm))
+        match transporter::deactivate(id).await {
+            Ok(_) => {},
+            Err(_) => {
+                return Err(Status::aborted("Failed to transport deactivation request."));
+            },
+        }
 
+        Ok(Response::new(irm))
     }
 
     ///

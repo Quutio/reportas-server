@@ -11,7 +11,17 @@ pub async fn transport(irm: IdentifiedReportMessage) -> Result<(), Box<dyn std::
     let mut client = ReportTransporterClient::connect("http://[::1]:50024").await?;
     let request = tonic::Request::new(irm);
 
-    let status = client.broadcast_report(request).await?;
+    let _status = client.broadcast_report(request).await?;
+
+    Ok(())
+}
+
+pub async fn deactivate(id: i64) -> Result<(), Box<dyn std::error::Error>> {
+
+    let mut client = ReportTransporterClient::connect("http://[::1]:50024").await?;
+    let request = tonic::Request::new(report::ReportId{id});
+
+    let _status = client.broadcast_deactivate(request).await?;
 
     Ok(())
 }
