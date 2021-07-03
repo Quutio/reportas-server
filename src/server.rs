@@ -2,22 +2,22 @@ extern crate clap;
 extern crate dotenv;
 
 mod transporter;
-
+use transporter::Transporter;
 use clap::{App, Arg};
-
 use service::models::{NewReport};
 use service::*;
-
 use tonic::{transport::Server, Request, Response, Status};
 
-// use futures::{Stream, StreamExt};
 use tokio::sync::mpsc;
+use futures_core::Stream;
+use tokio_stream::wrappers::ReceiverStream;
 
 use report::report_handler_server::{ReportHandler, ReportHandlerServer};
 use report::{IdentifiedReportMessage, ReportMessage, ReportQuery, ReportRequest, ReportResponse, ReportId};
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::pin::Pin;
 
 pub mod report {
     tonic::include_proto!("report");
@@ -25,17 +25,23 @@ pub mod report {
 
 pub struct MainReportHandler {
     db: PgReportDb,
+    transporter: Transporter,
     _results: Arc<Mutex<Vec<IdentifiedReportMessage>>>,
 }
 
 impl MainReportHandler {
-    pub fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
 
         let db = PgReportDb::new(addr).unwrap();
+
+        let addrs = vec!["http://[::1]:50024", "http://[::1]:50025"];
+
+        let transporter = Transporter::new(addrs).await?;
 
         Ok(
             MainReportHandler {
                 db: db,
+                transporter: transporter,
                 _results: Arc::new(Mutex::new(Vec::<IdentifiedReportMessage>::new()))
             }
         )
@@ -46,10 +52,10 @@ impl MainReportHandler {
 #[tonic::async_trait]
 impl ReportHandler for MainReportHandler {
 
-    type QueryAllReportsStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
-    type QueryReportsByReporterStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
-    type QueryReportsByReportedStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
-    type QueryReportsByTimestampStream = mpsc::Receiver<Result<IdentifiedReportMessage, Status>>;
+    type QueryAllReportsStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
+    type QueryReportsByReporterStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
+    type QueryReportsByReportedStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
+    type QueryReportsByTimestampStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
 
     ///
     /// Handle a (gRPC) report submission:
@@ -97,7 +103,7 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
-        match transporter::transport(irm).await {
+        match self.transporter.transport(irm).await {
             Ok(_) => {},
             Err(err) => {
                 return Err(Status::aborted("Failed to transport request."))
@@ -127,7 +133,7 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
-        match transporter::deactivate(id).await {
+        match self.transporter.deactivate(id).await {
             Ok(_) => {},
             Err(_) => {
                 return Err(Status::aborted("Failed to transport deactivation request."));
@@ -172,7 +178,7 @@ impl ReportHandler for MainReportHandler {
             }
         });
 
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
     ///
@@ -211,7 +217,7 @@ impl ReportHandler for MainReportHandler {
             }
         });
 
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
     ///
@@ -252,7 +258,7 @@ impl ReportHandler for MainReportHandler {
             }
         });
 
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
     async fn query_reports_by_timestamp(
@@ -289,7 +295,7 @@ impl ReportHandler for MainReportHandler {
             }
         });
 
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
 
@@ -351,7 +357,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .parse()?;
 
-    let report_handler = MainReportHandler::new(&dotenv::var("DATABASE_URL").unwrap())?;
+    let report_handler = MainReportHandler::new(&dotenv::var("DATABASE_URL").unwrap()).await?;
 
     println!("\nLISTENING TO CHANNEL BEGUN: {}\n", &addr);
 
