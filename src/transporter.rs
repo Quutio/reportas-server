@@ -1,5 +1,4 @@
 
-use tonic::transport::Channel;
 use tonic::transport::Endpoint;
 
 use report::report_transporter_client::ReportTransporterClient;

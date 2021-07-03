@@ -9,7 +9,6 @@ use service::*;
 use tonic::{transport::Server, Request, Response, Status};
 
 use tokio::sync::mpsc;
-use futures_core::Stream;
 use tokio_stream::wrappers::ReceiverStream;
 
 use report::report_handler_server::{ReportHandler, ReportHandlerServer};
@@ -17,7 +16,6 @@ use report::{IdentifiedReportMessage, ReportMessage, ReportQuery, ReportRequest,
 
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::pin::Pin;
 
 pub mod report {
     tonic::include_proto!("report");
@@ -169,7 +167,7 @@ impl ReportHandler for MainReportHandler {
             irms.push(irm);
         }
 
-        let (mut tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(4);
         let res = Arc::new(irms);
 
         tokio::spawn(async move {
@@ -208,7 +206,7 @@ impl ReportHandler for MainReportHandler {
             irms.push(irm);
         }
 
-        let (mut tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(4);
         let res = Arc::new(irms);
 
         tokio::spawn(async move {
@@ -249,7 +247,7 @@ impl ReportHandler for MainReportHandler {
             irms.push(irm);
         }
 
-        let (mut tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(4);
         let res = Arc::new(irms);
 
         tokio::spawn(async move {
@@ -278,7 +276,7 @@ impl ReportHandler for MainReportHandler {
         let queried = match self.db.query_report(service::QueryType::ByTimestamp(ts_val)) {
             Ok(val) => {val},
             Err(_) => {
-                return Err(tonic::Status::invalid_argument("invalid timestamp"))
+                return Err(tonic::Status::unavailable("database query failed"));
             },
         };
 
@@ -299,7 +297,7 @@ impl ReportHandler for MainReportHandler {
             irms.push(irm);
         }
 
-        let (mut tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(4);
         let res = Arc::new(irms);
 
         tokio::spawn(async move {
@@ -323,6 +321,10 @@ impl ReportHandler for MainReportHandler {
 
         let query = request.into_inner().id;
         let queried = self.db.query_report(service::QueryType::ById(query as i64)).unwrap();
+
+        if queried.is_empty() {
+            return Err(Status::not_found("not found"));
+        }
 
         let res = IdentifiedReportMessage {
             id:         queried[0].id as i64,
