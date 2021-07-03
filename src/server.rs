@@ -267,7 +267,20 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<Self::QueryReportsByTimestampStream>, tonic::Status> {
 
         let query = request.into_inner().query;
-        let queried = self.db.query_report(service::QueryType::ByTimestamp(query.parse::<i64>().unwrap())).unwrap();
+
+        let ts_val = match query.parse::<i64>() {
+            Ok(val) => {val},
+            Err(_) => {
+                return Err(tonic::Status::invalid_argument("invalid timestamp"))
+            }
+        };
+
+        let queried = match self.db.query_report(service::QueryType::ByTimestamp(ts_val)) {
+            Ok(val) => {val},
+            Err(_) => {
+                return Err(tonic::Status::invalid_argument("invalid timestamp"))
+            },
+        };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 
