@@ -11,6 +11,7 @@ pub struct Report {
 
     pub handler: Option<String>,
     pub handle_ts: Option<i64>,
+    pub comment: Option<String>,
 
     pub description: String,
 }

@@ -35,7 +35,7 @@ where
 
     fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
 
-    fn deactivate_report(&self, id: i64, operator: &str) -> Result<Report, Box<dyn Error>>;
+    fn deactivate_report(&self, id: i64, operator: &str, comment: Option<&str>) -> Result<Report, Box<dyn Error>>;
 }
 
 pub struct PgReportDb {
@@ -63,7 +63,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
         Ok(res)
     }
 
-    fn deactivate_report(&self, identifier: i64, operator: &str) -> Result<Report, Box<dyn Error>> {
+    fn deactivate_report(&self, identifier: i64, operator: &str, ccomment: Option<&str>) -> Result<Report, Box<dyn Error>> {
         use schema::reports::dsl::*;
 
         let utc = chrono::Utc::now();
@@ -76,6 +76,12 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
         update(reports.filter(id.eq(identifier)))
             .set(handler.eq(operator))
             .execute(&self.pool.get()?)?;
+
+        if let Some(comm) = ccomment {
+            update(reports.filter(id.eq(identifier)))
+                .set(comment.eq(comm))
+                .execute(&self.pool.get()?)?;
+        }
 
         let res = update(reports.filter(id.eq(identifier)))
             .set(handle_ts.eq(ts))

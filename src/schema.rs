@@ -7,6 +7,7 @@ table! {
         reported -> Text,
         handler -> Nullable<Text>,
         handle_ts -> Nullable<Int8>,
+        comment -> Nullable<Text>,
         description -> Text,
     }
 }

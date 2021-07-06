@@ -7,5 +7,6 @@ CREATE TABLE reports (
     reported TEXT NOT NULL,
     handler TEXT,
     handle_ts BIGINT,
+    comment TEXT,
     description TEXT NOT NULL
 )

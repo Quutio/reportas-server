@@ -12,7 +12,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
 use report::report_handler_server::{ReportHandler, ReportHandlerServer};
-use report::{IdentifiedReportMessage, ReportMessage, ReportQuery, ReportRequest, ReportResponse, ReportId};
+use report::{IdentifiedReportMessage, ReportMessage, ReportQuery, ReportRequest, ReportDeactivateRequest};
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -108,6 +108,7 @@ impl ReportHandler for MainReportHandler {
             reported:   rep.reported,
             handler:    rep.handler.unwrap_or("".to_owned()),
             handle_ts:  rep.handle_ts.unwrap_or(-1),
+            comment:    rep.comment.unwrap_or("".to_owned()),
             desc:       rep.description,
         };
 
@@ -125,15 +126,22 @@ impl ReportHandler for MainReportHandler {
 
     async fn deactivate_report(
         &self,
-        request: Request<ReportQuery>
+        request: Request<ReportDeactivateRequest>
     ) ->Result<Response<IdentifiedReportMessage>, tonic::Status> {
 
-        let irm = request.into_inner();
+        let rdr = request.into_inner();
 
-        let id = irm.id;
-        let operator = irm.query;
+        let id = rdr.id;
+        let operator = rdr.operator;
+        let comment: Option<&str>;
 
-        let rep = self.db.deactivate_report(id, &operator).unwrap();
+        if rdr.comment.is_empty() {
+            comment = None;
+        } else {
+            comment = Some(&rdr.comment);
+        }
+
+        let rep = self.db.deactivate_report(id, &operator, comment).unwrap();
 
         let irm = report::IdentifiedReportMessage {
             id:         rep.id,
@@ -143,6 +151,7 @@ impl ReportHandler for MainReportHandler {
             reported:   rep.reported,
             handler:    rep.handler.unwrap_or("".to_owned()),
             handle_ts:  rep.handle_ts.unwrap_or(-1),
+            comment:    rep.comment.unwrap_or("".to_owned()),
             desc:       rep.description,
         };
 
@@ -178,6 +187,7 @@ impl ReportHandler for MainReportHandler {
                 reported:   rep.reported.clone(),
                 handler:    rep.handler.clone().unwrap_or("".to_owned()),
                 handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                comment:    rep.comment.clone().unwrap_or("".to_owned()),
                 desc:       rep.description.clone(),
             };
 
@@ -219,6 +229,7 @@ impl ReportHandler for MainReportHandler {
                 reported:   rep.reported.clone(),
                 handler:    rep.handler.clone().unwrap_or("".to_owned()),
                 handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                comment:    rep.comment.clone().unwrap_or("".to_owned()),
                 desc:       rep.description.clone(),
             };
 
@@ -262,6 +273,7 @@ impl ReportHandler for MainReportHandler {
                 reported:   rep.reported.clone(),
                 handler:    rep.handler.clone().unwrap_or("".to_owned()),
                 handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                comment:    rep.comment.clone().unwrap_or("".to_owned()),
                 desc:       rep.description.clone(),
             };
 
@@ -314,6 +326,7 @@ impl ReportHandler for MainReportHandler {
                 reported:   rep.reported.clone(),
                 handler:    rep.handler.clone().unwrap_or("".to_owned()),
                 handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                comment:    rep.comment.clone().unwrap_or("".to_owned()),
                 desc:       rep.description.clone(),
             };
 
@@ -357,6 +370,7 @@ impl ReportHandler for MainReportHandler {
             reported:   queried[0].reported.clone(),
             handler:    queried[0].handler.clone().unwrap_or("".to_owned()),
             handle_ts:  queried[0].handle_ts.clone().unwrap_or(-1),
+            comment:    queried[0].comment.clone().unwrap_or("".to_owned()),
             desc:       queried[0].reported.clone(),
         };
 
@@ -382,6 +396,7 @@ impl ReportHandler for MainReportHandler {
                 reported:   rep.reported.clone(),
                 handler:    rep.handler.clone().unwrap_or("".to_owned()),
                 handle_ts:  rep.handle_ts.unwrap_or(-1),
+                comment:    rep.comment.clone().unwrap_or("".to_owned()),
                 desc:       rep.description.clone(),
             };
 
@@ -434,6 +449,7 @@ impl ReportHandler for MainReportHandler {
                 reported:   rep.reported.clone(),
                 handler:    rep.handler.clone().unwrap_or("".to_owned()),
                 handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                comment:    rep.comment.clone().unwrap_or("".to_owned()),
                 desc:       rep.description.clone(),
             };
 
@@ -468,6 +484,7 @@ impl ReportHandler for MainReportHandler {
                 reported:   rep.reported.clone(),
                 handler:    rep.handler.clone().unwrap_or("".to_owned()),
                 handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                comment:    rep.comment.clone().unwrap_or("".to_owned()),
                 desc:       rep.description.clone(),
             };
 
