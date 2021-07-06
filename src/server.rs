@@ -54,6 +54,8 @@ impl ReportHandler for MainReportHandler {
     type QueryReportsByReporterStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByReportedStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByTimestampStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
+    type QueryReportsByHandlerStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
+    type QueryReportsByHandleTimestampStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
 
     ///
     /// Handle a (gRPC) report submission:
@@ -68,7 +70,12 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<ReportResponse>, Status> {
         println!("\nREQUEST:\n{:?}\n", request);
 
-        let req_msg = request.into_inner().msg.expect("\nBAD REQUEST :: 400\n");
+        let req_msg = request.into_inner().msg;
+        let req_msg = match req_msg {
+            Some(val) => { val },
+            None => { return Err(Status::invalid_argument("invalid argument")); }
+        };
+
         let req_clone = req_msg.clone();
 
         let utc = chrono::Utc::now();
@@ -98,6 +105,8 @@ impl ReportHandler for MainReportHandler {
             timestamp:  rep.timestamp,
             reporter:   rep.reporter,
             reported:   rep.reported,
+            handler:    rep.handler.unwrap_or("".to_owned()),
+            handle_ts:  rep.handle_ts.unwrap_or(-1),
             desc:       rep.description,
         };
 
@@ -115,12 +124,15 @@ impl ReportHandler for MainReportHandler {
 
     async fn deactivate_report(
         &self,
-        request: Request<ReportId>
+        request: Request<ReportQuery>
     ) ->Result<Response<IdentifiedReportMessage>, tonic::Status> {
 
-        let id = request.into_inner().id;
+        let irm = request.into_inner();
 
-        let rep = self.db.deactivate_report(id).unwrap();
+        let id = irm.id;
+        let operator = irm.query;
+
+        let rep = self.db.deactivate_report(id, &operator).unwrap();
 
         let irm = report::IdentifiedReportMessage {
             id:         rep.id,
@@ -128,6 +140,8 @@ impl ReportHandler for MainReportHandler {
             timestamp:  rep.timestamp,
             reporter:   rep.reporter,
             reported:   rep.reported,
+            handler:    rep.handler.unwrap_or("".to_owned()),
+            handle_ts:  rep.handle_ts.unwrap_or(-1),
             desc:       rep.description,
         };
 
@@ -161,6 +175,8 @@ impl ReportHandler for MainReportHandler {
                 timestamp:  rep.timestamp,
                 reporter:   rep.reporter.clone(),
                 reported:   rep.reported.clone(),
+                handler:    rep.handler.clone().unwrap_or("".to_owned()),
+                handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
                 desc:       rep.description.clone(),
             };
 
@@ -200,6 +216,8 @@ impl ReportHandler for MainReportHandler {
                 timestamp:  rep.timestamp,
                 reporter:   rep.reporter.clone(),
                 reported:   rep.reported.clone(),
+                handler:    rep.handler.clone().unwrap_or("".to_owned()),
+                handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
                 desc:       rep.description.clone(),
             };
 
@@ -241,6 +259,8 @@ impl ReportHandler for MainReportHandler {
                 timestamp:  rep.timestamp,
                 reporter:   rep.reporter.clone(),
                 reported:   rep.reported.clone(),
+                handler:    rep.handler.clone().unwrap_or("".to_owned()),
+                handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
                 desc:       rep.description.clone(),
             };
 
@@ -291,6 +311,8 @@ impl ReportHandler for MainReportHandler {
                 timestamp:  rep.timestamp,
                 reporter:   rep.reporter.clone(),
                 reported:   rep.reported.clone(),
+                handler:    rep.handler.clone().unwrap_or("".to_owned()),
+                handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
                 desc:       rep.description.clone(),
             };
 
@@ -332,10 +354,101 @@ impl ReportHandler for MainReportHandler {
             timestamp:  queried[0].timestamp,
             reporter:   queried[0].reporter.clone(),
             reported:   queried[0].reported.clone(),
+            handler:    queried[0].handler.clone().unwrap_or("".to_owned()),
+            handle_ts:  queried[0].handle_ts.clone().unwrap_or(-1),
             desc:       queried[0].reported.clone(),
         };
 
         Ok(Response::new(res))
+    }
+
+    async fn query_reports_by_handler(
+        &self,
+        request: Request<ReportQuery>
+    ) -> Result<Response<Self::QueryReportsByHandlerStream>, Status> {
+
+        let query = request.into_inner().query;
+        let queried = self.db.query_report(service::QueryType::ByHandler(query)).unwrap();
+
+        let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        for rep in queried.iter() {
+            let irm = IdentifiedReportMessage {
+                id:         rep.id as i64,
+                active:     rep.active,
+                timestamp:  rep.timestamp,
+                reporter:   rep.reporter.clone(),
+                reported:   rep.reported.clone(),
+                handler:    rep.handler.clone().unwrap_or("".to_owned()),
+                handle_ts:  rep.handle_ts.unwrap_or(-1),
+                desc:       rep.description.clone(),
+            };
+
+            irms.push(irm);
+        }
+
+        let (tx, rx) = mpsc::channel(4);
+        let res = Arc::new(irms);
+
+        tokio::spawn(async move {
+            for result in &res[..] {
+                tx.send(Ok(result.clone())).await.unwrap();
+            }
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
+    }
+
+    async fn query_reports_by_handle_timestamp(
+        &self,
+        request: Request<ReportQuery>
+    ) -> Result<Response<Self::QueryReportsByHandleTimestampStream>, Status> {
+
+        let query = request.into_inner().query;
+
+        let ts_val = match query.parse::<i64>() {
+            Ok(val) => {val},
+            Err(_) => {
+                return Err(tonic::Status::invalid_argument("invalid timestamp"))
+            }
+        };
+
+        let queried = match self.db.query_report(service::QueryType::ByHandleTimestamp(ts_val)) {
+            Ok(val) => {val},
+            Err(_) => {
+                return Err(tonic::Status::invalid_argument("invalid timestamp"))
+            },
+        };
+
+        let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        for rep in queried.iter() {
+
+            let irm = IdentifiedReportMessage {
+
+                id:         rep.id as i64,
+                active:     rep.active,
+                timestamp:  rep.timestamp,
+                reporter:   rep.reporter.clone(),
+                reported:   rep.reported.clone(),
+                handler:    rep.handler.clone().unwrap_or("".to_owned()),
+                handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                desc:       rep.description.clone(),
+            };
+
+            irms.push(irm);
+        }
+
+        let (tx, rx) = mpsc::channel(4);
+        let res = Arc::new(irms);
+
+        tokio::spawn(async move {
+            for result in &res[..] {
+                tx.send(Ok(result.clone())).await.unwrap();
+            }
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 }
 

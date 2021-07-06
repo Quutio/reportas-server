@@ -9,6 +9,9 @@ pub struct Report {
     pub reporter: String,
     pub reported: String,
 
+    pub handler: Option<String>,
+    pub handle_ts: Option<i64>,
+
     pub description: String,
 }
 

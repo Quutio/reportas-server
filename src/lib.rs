@@ -22,6 +22,8 @@ pub enum QueryType {
     ByReported(String),
     ByTimestamp(i64),
     ById(i64),
+    ByHandler(String),
+    ByHandleTimestamp(i64),
 }
 
 pub trait ReportDb<M>
@@ -32,7 +34,7 @@ where
 
     fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
 
-    fn deactivate_report(&self, id: i64) -> Result<Report, Box<dyn Error>>;
+    fn deactivate_report(&self, id: i64, operator: &str) -> Result<Report, Box<dyn Error>>;
 }
 
 pub struct PgReportDb {
@@ -60,16 +62,42 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
         Ok(res)
     }
 
-    fn deactivate_report(&self, identifier: i64) -> Result<Report, Box<dyn Error>> {
+    fn deactivate_report(&self, identifier: i64, operator: &str) -> Result<Report, Box<dyn Error>> {
         use schema::reports::dsl::*;
 
-        let res = update(reports.filter(id.eq(identifier)))
+        let utc = chrono::Utc::now();
+        let ts = utc.timestamp();
+
+        update(reports.filter(id.eq(identifier)))
             .set(active.eq(false))
-            .get_result::<Report>(&self.pool.get().unwrap())?;
+            .execute(&self.pool.get()?)?;
+
+        update(reports.filter(id.eq(identifier)))
+            .set(handler.eq(operator))
+            .execute(&self.pool.get()?)?;
+
+        let res = update(reports.filter(id.eq(identifier)))
+            .set(handle_ts.eq(ts))
+            .get_result::<Report>(&self.pool.get()?)?;
 
         Ok(res)
     }
 
+    ///
+    /// Query reports by a query type.
+    ///
+    /// # Arguments
+    ///
+    /// * `query_type` - `QueryType` enum with a required value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use models::QueryType;
+    ///
+    /// let queried = query_report(QueryType::ById(420));
+    /// ```
+    ///
     fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
 
         use schema::reports::dsl::*;
@@ -101,77 +129,18 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(id.eq(value))
                     .load::<Report>(&self.pool.get().unwrap())?;
             }
+            QueryType::ByHandler(value) => {
+                res = reports
+                    .filter(handler.eq(value))
+                    .load::<Report>(&self.pool.get().unwrap())?;
+            }
+            QueryType::ByHandleTimestamp(value) => {
+                res = reports
+                    .filter(handle_ts.le(value))
+                    .load::<Report>(&self.pool.get().unwrap())?;
+            }
         }
 
         Ok(res)
     }
-}
-
-///
-/// Query reports by a query type.
-///
-/// # Arguments
-///
-/// * `query_type` - `QueryType` enum with a required value.
-///
-/// # Examples
-///
-/// ```
-/// use models::QueryType;
-///
-/// let queried = query_report(QueryType::ById(420));
-/// ```
-///
-pub fn query_report(query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
-    use schema::reports::dsl::*;
-
-    let conn = establish_connection();
-
-    let res: Vec<Report>;
-
-    match query_type {
-        QueryType::ALL => {
-            res = reports.load(&conn)?;
-        }
-        QueryType::ByReporter(value) => {
-            res = reports.filter(reporter.eq(value)).load::<Report>(&conn)?;
-        }
-        QueryType::ByReported(value) => {
-            res = reports.filter(reported.eq(value)).load::<Report>(&conn)?;
-        }
-        QueryType::ByTimestamp(value) => {
-            res = reports.filter(timestamp.le(value)).load::<Report>(&conn)?;
-        }
-        QueryType::ById(value) => {
-            res = reports.filter(id.eq(value)).load::<Report>(&conn)?;
-        }
-    }
-
-    Ok(res)
-}
-
-///
-/// Insert a report.
-///
-pub fn insert_report(new_report: &NewReport) -> Result<Report, Box<dyn Error>> {
-
-    use schema::reports::dsl::*;
-
-    let conn = establish_connection();
-
-    let res = insert_into(reports).values(new_report).get_result::<Report>(&conn)?;
-
-    Ok(res)
-}
-
-///
-/// Attempt to connect to postgres.
-///
-pub fn establish_connection() -> PgConnection {
-    dotenv().ok();
-
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    PgConnection::establish(&db_url)
-        .expect(&format!("An error occured while connectiong to {}", db_url))
 }

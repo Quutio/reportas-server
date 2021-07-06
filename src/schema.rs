@@ -5,6 +5,8 @@ table! {
         timestamp -> Int8,
         reporter -> Text,
         reported -> Text,
+        handler -> Nullable<Text>,
+        handle_ts -> Nullable<Int8>,
         description -> Text,
     }
 }

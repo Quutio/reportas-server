@@ -5,5 +5,7 @@ CREATE TABLE reports (
     timestamp BIGINT NOT NULL,
     reporter TEXT NOT NULL,
     reported TEXT NOT NULL,
+    handler TEXT,
+    handle_ts BIGINT,
     description TEXT NOT NULL
 )
