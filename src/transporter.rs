@@ -1,12 +1,9 @@
 
 use tonic::transport::Endpoint;
 
-use report::report_transporter_client::ReportTransporterClient;
-use report::IdentifiedReportMessage;
-
-pub mod report {
-    tonic::include_proto!("report");
-}
+use crate::report::IdentifiedReportMessage;
+use crate::report::report_transporter_client::ReportTransporterClient;
+use crate::report::ReportId;
 
 pub struct Transporter {
     endpoints: Vec<Endpoint>,
@@ -51,7 +48,7 @@ impl Transporter {
             if let Ok(e) = endpoint.connect().await {
 
                 let mut client = ReportTransporterClient::new(e);
-                let request = tonic::Request::new(report::ReportId{id});
+                let request = tonic::Request::new(ReportId{id});
 
                 let _status = client.broadcast_deactivate(request).await?;
             }

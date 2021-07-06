@@ -22,6 +22,7 @@ pub enum QueryType {
     ByReported(String),
     ByTimestamp(i64),
     ById(i64),
+    ByActive,
     ByHandler(String),
     ByHandleTimestamp(i64),
 }
@@ -128,6 +129,11 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 res = reports
                     .filter(id.eq(value))
                     .load::<Report>(&self.pool.get().unwrap())?;
+            }
+            QueryType::ByActive => {
+                res = reports
+                    .filter(active.eq(true))
+                    .load::<Report>(&self.pool.get()?)?;
             }
             QueryType::ByHandler(value) => {
                 res = reports

@@ -53,6 +53,7 @@ impl ReportHandler for MainReportHandler {
     type QueryAllReportsStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByReporterStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByReportedStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
+    type QueryReportsByActiveStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByTimestampStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByHandlerStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByHandleTimestampStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
@@ -67,7 +68,7 @@ impl ReportHandler for MainReportHandler {
     async fn submit_report(
         &self,
         request: Request<ReportRequest>,
-    ) -> Result<Response<ReportResponse>, Status> {
+    ) -> Result<Response<IdentifiedReportMessage>, Status> {
         println!("\nREQUEST:\n{:?}\n", request);
 
         let req_msg = request.into_inner().msg;
@@ -99,7 +100,7 @@ impl ReportHandler for MainReportHandler {
 
         println!("id -> {}", rep.id);
 
-        let irm = transporter::report::IdentifiedReportMessage {
+        let irm = IdentifiedReportMessage {
             id:         rep.id,
             active:     rep.active,
             timestamp:  rep.timestamp,
@@ -110,7 +111,7 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
-        match self.transporter.transport(irm).await {
+        match self.transporter.transport(irm.clone()).await {
             Ok(_) => {},
             Err(err) => {
                 return Err(Status::aborted("Failed to transport request."))
@@ -119,7 +120,7 @@ impl ReportHandler for MainReportHandler {
 
         let resp = report::ReportResponse { msg: Some(msg) };
 
-        Ok(Response::new(resp))
+        Ok(Response::new(irm))
     }
 
     async fn deactivate_report(
@@ -449,6 +450,41 @@ impl ReportHandler for MainReportHandler {
         });
 
         Ok(Response::new(ReceiverStream::new(rx)))
+    }
+
+    async fn query_reports_by_active(&self, request: Request<ReportQuery>) ->Result<Response<Self::QueryReportsByActiveStream>, tonic::Status> {
+
+        let query = request.into_inner().query;
+        let queried = self.db.query_report(service::QueryType::ByActive).unwrap();
+
+        let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        for rep in queried.iter() {
+            let irm = IdentifiedReportMessage {
+                id:         rep.id as i64,
+                active:     rep.active,
+                timestamp:  rep.timestamp,
+                reporter:   rep.reporter.clone(),
+                reported:   rep.reported.clone(),
+                handler:    rep.handler.clone().unwrap_or("".to_owned()),
+                handle_ts:  rep.handle_ts.clone().unwrap_or(-1),
+                desc:       rep.description.clone(),
+            };
+
+            irms.push(irm);
+        }
+
+        let (tx, rx) = mpsc::channel(4);
+        let res = Arc::new(irms);
+
+        tokio::spawn(async move {
+            for result in &res[..] {
+                tx.send(Ok(result.clone())).await.unwrap();
+            }
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
+
     }
 }
 
