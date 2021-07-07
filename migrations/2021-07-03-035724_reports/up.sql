@@ -8,5 +8,6 @@ CREATE TABLE reports (
     handler TEXT,
     handle_ts BIGINT,
     comment TEXT,
-    description TEXT NOT NULL
+    description TEXT NOT NULL,
+    tags TEXT
 )

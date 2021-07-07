@@ -9,5 +9,6 @@ table! {
         handle_ts -> Nullable<Int8>,
         comment -> Nullable<Text>,
         description -> Text,
+        tags -> Nullable<Text>,
     }
 }

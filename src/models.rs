@@ -14,6 +14,7 @@ pub struct Report {
     pub comment: Option<String>,
 
     pub description: String,
+    pub tags: Option<String>,
 }
 
 #[derive(Debug, Insertable)]
@@ -24,4 +25,5 @@ pub struct NewReport<'a> {
     pub reporter: &'a str,
     pub reported: &'a str,
     pub description: &'a str,
+    pub tags: Option<&'a str>,
 }

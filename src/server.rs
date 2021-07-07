@@ -84,10 +84,19 @@ impl ReportHandler for MainReportHandler {
         let utc = chrono::Utc::now();
         let ts = utc.timestamp();
 
+         let tags: Option<&str>;
+
+        if req_clone.tags.is_empty() {
+            tags = None;
+        } else {
+            tags = Some(&req_clone.tags);
+        }
+
         let msg = ReportMessage {
             reporter: req_msg.reporter,
             reported: req_msg.reported,
             desc: req_msg.desc,
+            tags: req_msg.tags,
         };
 
         let new_report = NewReport {
@@ -96,6 +105,7 @@ impl ReportHandler for MainReportHandler {
             reporter: req_clone.reporter.as_str(),
             reported: req_clone.reported.as_str(),
             description: req_clone.desc.as_str(),
+            tags: tags,
         };
 
         let rep = self
@@ -116,6 +126,7 @@ impl ReportHandler for MainReportHandler {
             handle_ts: rep.handle_ts.unwrap_or(-1),
             comment: rep.comment.unwrap_or("".to_owned()),
             desc: rep.description,
+            tags: rep.tags.unwrap_or("".to_owned()),
         };
 
         info!(
@@ -174,6 +185,7 @@ impl ReportHandler for MainReportHandler {
             handle_ts: rep.handle_ts.unwrap_or(-1),
             comment: rep.comment.unwrap_or("".to_owned()),
             desc: rep.description,
+            tags: rep.tags.unwrap_or("".to_owned()),
         };
 
         info!(
@@ -231,6 +243,7 @@ impl ReportHandler for MainReportHandler {
                 handle_ts: rep.handle_ts.clone().unwrap_or(-1),
                 comment: rep.comment.clone().unwrap_or("".to_owned()),
                 desc: rep.description.clone(),
+                tags: rep.tags.clone().unwrap_or("".to_owned()),
             };
 
             irms.push(irm);
@@ -286,6 +299,7 @@ impl ReportHandler for MainReportHandler {
                 handle_ts: rep.handle_ts.clone().unwrap_or(-1),
                 comment: rep.comment.clone().unwrap_or("".to_owned()),
                 desc: rep.description.clone(),
+                tags: rep.tags.clone().unwrap_or("".to_owned()),
             };
 
             irms.push(irm);
@@ -341,6 +355,7 @@ impl ReportHandler for MainReportHandler {
                 handle_ts: rep.handle_ts.clone().unwrap_or(-1),
                 comment: rep.comment.clone().unwrap_or("".to_owned()),
                 desc: rep.description.clone(),
+                tags: rep.tags.clone().unwrap_or("".to_owned()),
             };
 
             irms.push(irm);
@@ -400,6 +415,7 @@ impl ReportHandler for MainReportHandler {
                 handle_ts: rep.handle_ts.clone().unwrap_or(-1),
                 comment: rep.comment.clone().unwrap_or("".to_owned()),
                 desc: rep.description.clone(),
+                tags: rep.tags.clone().unwrap_or("".to_owned()),
             };
 
             irms.push(irm);
@@ -452,6 +468,7 @@ impl ReportHandler for MainReportHandler {
             handle_ts: queried[0].handle_ts.clone().unwrap_or(-1),
             comment: queried[0].comment.clone().unwrap_or("".to_owned()),
             desc: queried[0].reported.clone(),
+            tags: queried[0].tags.clone().unwrap_or("".to_owned()),
         };
 
         Ok(Response::new(res))
@@ -491,6 +508,7 @@ impl ReportHandler for MainReportHandler {
                 handle_ts: rep.handle_ts.unwrap_or(-1),
                 comment: rep.comment.clone().unwrap_or("".to_owned()),
                 desc: rep.description.clone(),
+                tags: rep.tags.clone().unwrap_or("".to_owned()),
             };
 
             irms.push(irm);
@@ -550,6 +568,7 @@ impl ReportHandler for MainReportHandler {
                 handle_ts: rep.handle_ts.clone().unwrap_or(-1),
                 comment: rep.comment.clone().unwrap_or("".to_owned()),
                 desc: rep.description.clone(),
+                tags: rep.tags.clone().unwrap_or("".to_owned()),
             };
 
             irms.push(irm);
@@ -600,6 +619,7 @@ impl ReportHandler for MainReportHandler {
                 handle_ts: rep.handle_ts.clone().unwrap_or(-1),
                 comment: rep.comment.clone().unwrap_or("".to_owned()),
                 desc: rep.description.clone(),
+                tags: rep.tags.clone().unwrap_or("".to_owned()),
             };
 
             irms.push(irm);

@@ -60,6 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         reporter: uuid::Uuid::new_v4().to_string(),
         reported: uuid::Uuid::new_v4().to_string(),
         desc: "joujou".into(),
+        tags: "jeast,joust".into(),
     };
 
     let request = tonic::Request::new(ReportRequest { msg: Some(msg) });
