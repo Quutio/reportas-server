@@ -16,13 +16,12 @@ pub struct Report {
     pub description: String,
 }
 
-#[derive(Debug)]
-#[derive(Insertable)]
+#[derive(Debug, Insertable)]
 #[table_name = "reports"]
 pub struct NewReport<'a> {
     pub active: bool,
     pub timestamp: i64,
     pub reporter: &'a str,
     pub reported: &'a str,
-    pub description: &'a str
+    pub description: &'a str,
 }

@@ -6,8 +6,8 @@ extern crate diesel;
 
 extern crate dotenv;
 
-use diesel::{r2d2::ConnectionManager, prelude::*};
-use diesel::{insert_into, update, pg::PgConnection};
+use diesel::{insert_into, pg::PgConnection, update};
+use diesel::{prelude::*, r2d2::ConnectionManager};
 
 use dotenv::dotenv;
 
@@ -29,13 +29,18 @@ pub enum QueryType {
 
 pub trait ReportDb<M>
 where
-    M: diesel::r2d2::ManageConnection
+    M: diesel::r2d2::ManageConnection,
 {
     fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>>;
 
     fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
 
-    fn deactivate_report(&self, id: i64, operator: &str, comment: Option<&str>) -> Result<Report, Box<dyn Error>>;
+    fn deactivate_report(
+        &self,
+        id: i64,
+        operator: &str,
+        comment: Option<&str>,
+    ) -> Result<Report, Box<dyn Error>>;
 }
 
 pub struct PgReportDb {
@@ -43,27 +48,31 @@ pub struct PgReportDb {
 }
 
 impl PgReportDb {
-
     pub fn new(addr: &str) -> Result<Self, Box<dyn Error>> {
-
         let manager = ConnectionManager::<PgConnection>::new(addr);
         let pool = diesel::r2d2::Pool::builder().build(manager)?;
 
-        Ok( Self { pool } )
+        Ok(Self { pool })
     }
 }
 
 impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
-
     fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>> {
         use schema::reports::dsl::*;
 
-        let res = insert_into(reports).values(new_report).get_result::<Report>(&self.pool.get().unwrap())?;
+        let res = insert_into(reports)
+            .values(new_report)
+            .get_result::<Report>(&self.pool.get()?)?;
 
         Ok(res)
     }
 
-    fn deactivate_report(&self, identifier: i64, operator: &str, ccomment: Option<&str>) -> Result<Report, Box<dyn Error>> {
+    fn deactivate_report(
+        &self,
+        identifier: i64,
+        operator: &str,
+        ccomment: Option<&str>,
+    ) -> Result<Report, Box<dyn Error>> {
         use schema::reports::dsl::*;
 
         let utc = chrono::Utc::now();
@@ -106,35 +115,33 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
     /// ```
     ///
     fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
-
         use schema::reports::dsl::*;
 
         let res: Vec<Report>;
 
         match query_type {
             QueryType::ALL => {
-                res = reports
-                    .load(&self.pool.get().unwrap())?;
+                res = reports.load(&self.pool.get()?)?;
             }
             QueryType::ByReporter(value) => {
                 res = reports
                     .filter(reporter.eq(value))
-                    .load::<Report>(&self.pool.get().unwrap())?;
+                    .load::<Report>(&self.pool.get()?)?;
             }
             QueryType::ByReported(value) => {
                 res = reports
                     .filter(reported.eq(value))
-                    .load::<Report>(&self.pool.get().unwrap())?;
+                    .load::<Report>(&self.pool.get()?)?;
             }
             QueryType::ByTimestamp(value) => {
                 res = reports
                     .filter(timestamp.le(value))
-                    .load::<Report>(&self.pool.get().unwrap())?;
+                    .load::<Report>(&self.pool.get()?)?;
             }
             QueryType::ById(value) => {
                 res = reports
                     .filter(id.eq(value))
-                    .load::<Report>(&self.pool.get().unwrap())?;
+                    .load::<Report>(&self.pool.get()?)?;
             }
             QueryType::ByActive => {
                 res = reports
@@ -144,12 +151,12 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
             QueryType::ByHandler(value) => {
                 res = reports
                     .filter(handler.eq(value))
-                    .load::<Report>(&self.pool.get().unwrap())?;
+                    .load::<Report>(&self.pool.get()?)?;
             }
             QueryType::ByHandleTimestamp(value) => {
                 res = reports
                     .filter(handle_ts.le(value))
-                    .load::<Report>(&self.pool.get().unwrap())?;
+                    .load::<Report>(&self.pool.get()?)?;
             }
         }
 
