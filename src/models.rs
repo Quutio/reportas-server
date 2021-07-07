@@ -16,6 +16,7 @@ pub struct Report {
     pub description: String,
 }
 
+#[derive(Debug)]
 #[derive(Insertable)]
 #[table_name = "reports"]
 pub struct NewReport<'a> {

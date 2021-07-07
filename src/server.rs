@@ -14,6 +14,8 @@ use tokio_stream::wrappers::ReceiverStream;
 use report::report_handler_server::{ReportHandler, ReportHandlerServer};
 use report::{IdentifiedReportMessage, ReportMessage, ReportQuery, ReportRequest, ReportDeactivateRequest};
 
+use tracing::{debug, error, info, instrument};
+
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -69,7 +71,6 @@ impl ReportHandler for MainReportHandler {
         &self,
         request: Request<ReportRequest>,
     ) -> Result<Response<IdentifiedReportMessage>, Status> {
-        println!("\nREQUEST:\n{:?}\n", request);
 
         let req_msg = request.into_inner().msg;
         let req_msg = match req_msg {
@@ -78,6 +79,7 @@ impl ReportHandler for MainReportHandler {
         };
 
         let req_clone = req_msg.clone();
+        let req_clone0 = req_msg.clone();
 
         let utc = chrono::Utc::now();
         let ts = utc.timestamp();
@@ -98,7 +100,8 @@ impl ReportHandler for MainReportHandler {
 
         let rep = self.db.insert_report(&new_report).expect("[!] data insertion failed");
 
-        println!("id -> {}", rep.id);
+        debug!("{:?}", &new_report);
+        debug!("{:?}", &rep);
 
         let irm = IdentifiedReportMessage {
             id:         rep.id,
@@ -112,9 +115,14 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
+        info!("\n\nrpc#SubmitReport :: ({:?}) \n\n{:?}\n", &req_clone0, &irm);
+
         match self.transporter.transport(irm.clone()).await {
-            Ok(_) => {},
+            Ok(_) => {
+                info!("Report with ID {} successfully transported", &irm.id);
+            },
             Err(err) => {
+                error!("Failed to transport Report with ID {}", &irm.id);
                 return Err(Status::aborted("Failed to transport request."))
             },
         };
@@ -130,6 +138,8 @@ impl ReportHandler for MainReportHandler {
     ) ->Result<Response<IdentifiedReportMessage>, tonic::Status> {
 
         let rdr = request.into_inner();
+
+        let rdr_clone = rdr.clone();
 
         let id = rdr.id;
         let operator = rdr.operator;
@@ -155,9 +165,14 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
+        info!("\n\nrpc#DeactivateReport :: ({:?}) \n\n{:?}\n", &rdr_clone, &irm);
+
         match self.transporter.deactivate(irm.clone()).await {
-            Ok(_) => {},
+            Ok(_) => {
+                info!("Report with ID {} successfully transported", &irm.id);
+            },
             Err(_) => {
+                error!("Failed to transport Report with ID {}", &irm.id);
                 return Err(Status::aborted("Failed to transport deactivation request."));
             },
         }
@@ -173,10 +188,14 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryAllReportsStream>, Status> {
 
-        let query = request.into_inner().query;
+        let req = request.into_inner();
+        let query = req.clone().query;
+
         let queried = self.db.query_report(service::QueryType::ALL).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        info!("\n\nrpc#QueryAllReports :: ({:?}) \n\nGot {} reports to stream\n", &req, &queried.len());
 
         for rep in queried.iter() {
             let irm = IdentifiedReportMessage {
@@ -215,10 +234,13 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByReporterStream>, Status> {
 
-        let query = request.into_inner().query;
+        let req = request.into_inner();
+        let query = req.clone().query;
         let queried = self.db.query_report(service::QueryType::ByReporter(query)).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        info!("\n\nrpc#QueryReportsByReporter :: ({:?}) \n\nGot {} reports to stream\n", &req, &queried.len());
 
         for rep in queried.iter() {
             let irm = IdentifiedReportMessage {
@@ -257,10 +279,13 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByReportedStream>, Status> {
 
-        let query = request.into_inner().query;
+        let req = request.into_inner();
+        let query = req.clone().query;
         let queried = self.db.query_report(service::QueryType::ByReported(query)).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        info!("\n\nrpc#QueryReportsByReported :: ({:?}) \n\nGot {} reports to stream\n", &req, &queried.len());
 
         for rep in queried.iter() {
 
@@ -297,7 +322,8 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByTimestampStream>, tonic::Status> {
 
-        let query = request.into_inner().query;
+        let req = request.into_inner();
+        let query = req.clone().query;
 
         let ts_val = match query.parse::<i64>() {
             Ok(val) => {val},
@@ -306,12 +332,15 @@ impl ReportHandler for MainReportHandler {
             }
         };
 
+
         let queried = match self.db.query_report(service::QueryType::ByTimestamp(ts_val)) {
             Ok(val) => {val},
             Err(_) => {
                 return Err(tonic::Status::unavailable("database query failed"));
             },
         };
+
+        info!("\n\nrpc#QueryReportsByTimestamp :: ({:?}) \n\nGot {} reports to stream\n", &req, &queried.len());
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 
@@ -355,8 +384,11 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportQuery>,
     ) -> Result<Response<IdentifiedReportMessage>, Status> {
 
-        let query = request.into_inner().id;
+        let req = request.into_inner();
+        let query = req.clone().id;
         let queried = self.db.query_report(service::QueryType::ById(query as i64)).unwrap();
+
+        info!("\n\nrpc#QueryReportsById :: ({:?}) \n", &req);
 
         if queried.is_empty() {
             return Err(Status::not_found("not found"));
@@ -382,10 +414,13 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportQuery>
     ) -> Result<Response<Self::QueryReportsByHandlerStream>, Status> {
 
-        let query = request.into_inner().query;
+        let req = request.into_inner();
+        let query = req.clone().query;
         let queried = self.db.query_report(service::QueryType::ByHandler(query)).unwrap();
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        info!("\n\nrpc#QueryReportsByHandler :: ({:?}) \n\nGot {} reports to stream\n", &req, &queried.len());
 
         for rep in queried.iter() {
             let irm = IdentifiedReportMessage {
@@ -420,7 +455,8 @@ impl ReportHandler for MainReportHandler {
         request: Request<ReportQuery>
     ) -> Result<Response<Self::QueryReportsByHandleTimestampStream>, Status> {
 
-        let query = request.into_inner().query;
+        let req = request.into_inner();
+        let query = req.clone().query;
 
         let ts_val = match query.parse::<i64>() {
             Ok(val) => {val},
@@ -437,6 +473,8 @@ impl ReportHandler for MainReportHandler {
         };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        info!("\n\nrpc#QueryReportsByHandleTimestamp :: ({:?}) \n\nGot {} reports to stream\n", &req, &queried.len());
 
         for rep in queried.iter() {
 
@@ -470,10 +508,19 @@ impl ReportHandler for MainReportHandler {
 
     async fn query_reports_by_active(&self, request: Request<ReportQuery>) ->Result<Response<Self::QueryReportsByActiveStream>, tonic::Status> {
 
-        let query = request.into_inner().query;
-        let queried = self.db.query_report(service::QueryType::ByActive).unwrap();
+        let req = request.into_inner();
+        let query = req.clone().query;
+        let queried = match self.db.query_report(service::QueryType::ByActive) {
+            Ok(val) => {val},
+            Err(_) => {
+                error!("Database failed");
+                return Err(Status::unavailable("database failed"));
+            },
+        };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
+
+        info!("\n\nrpc#QueryReportsByActive :: ({:?}) \n\nGot {} reports to stream\n", &req, &queried.len());
 
         for rep in queried.iter() {
             let irm = IdentifiedReportMessage {
@@ -508,6 +555,8 @@ impl ReportHandler for MainReportHandler {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
+    tracing_subscriber::fmt::init();
+
     let matches = App::new("reportas-server")
         .version("0.1.0")
         .author("7Gv")
@@ -536,11 +585,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         matches.value_of("address").unwrap(),
         matches.value_of("port").unwrap()
     )
-    .parse()?;
+        .parse()?;
+    debug!("addr :: -> {}", &addr);
 
-    let report_handler = MainReportHandler::new(&dotenv::var("DATABASE_URL").unwrap()).await?;
+    let dburl = &dotenv::var("DATABASE_URL").unwrap();
+    debug!("DATABASE_URL :: -> {}", &dburl);
 
-    println!("\nLISTENING TO CHANNEL BEGUN: {}\n", &addr);
+    let report_handler = MainReportHandler::new(&dburl).await?;
+
+    info!("ReportHandler initiated");
+    info!("LISTENING TO CHANNEL BEGUN: {}", &addr);
 
     Server::builder()
         .add_service(ReportHandlerServer::new(report_handler))

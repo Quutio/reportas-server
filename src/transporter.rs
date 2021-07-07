@@ -1,5 +1,6 @@
 
 use tonic::transport::Endpoint;
+use tracing::info;
 
 use crate::report::IdentifiedReportMessage;
 use crate::report::report_transporter_client::ReportTransporterClient;
@@ -27,12 +28,18 @@ impl Transporter {
 
     pub async fn transport(&self, irm: IdentifiedReportMessage) -> Result<(), Box<dyn std::error::Error>> {
 
+        info!("Attempting to transport to the following ENDPOINTS:");
+
         for endpoint in self.endpoints.iter() {
+
+            info!("{}", endpoint.uri());
 
             if let Ok(e) = endpoint.connect().await {
 
                 let mut client = ReportTransporterClient::new(e);
                 let request = tonic::Request::new(irm.clone());
+
+
 
                 let _status = client.broadcast_report(request).await?;
             }
@@ -43,7 +50,12 @@ impl Transporter {
 
     pub async fn deactivate(&self, irm: IdentifiedReportMessage) -> Result<(), Box<dyn std::error::Error>> {
 
+
+        info!("Attempting to transport to the following ENDPOINTS:");
+
         for endpoint in self.endpoints.iter() {
+
+            info!("{}", endpoint.uri());
 
             if let Ok(e) = endpoint.connect().await {
 
