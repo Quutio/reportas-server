@@ -155,7 +155,7 @@ impl ReportHandler for MainReportHandler {
             desc:       rep.description,
         };
 
-        match self.transporter.deactivate(id).await {
+        match self.transporter.deactivate(irm.clone()).await {
             Ok(_) => {},
             Err(_) => {
                 return Err(Status::aborted("Failed to transport deactivation request."));

@@ -41,14 +41,14 @@ impl Transporter {
         Ok(())
     }
 
-    pub async fn deactivate(&self, id: i64) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn deactivate(&self, irm: IdentifiedReportMessage) -> Result<(), Box<dyn std::error::Error>> {
 
         for endpoint in self.endpoints.iter() {
 
             if let Ok(e) = endpoint.connect().await {
 
                 let mut client = ReportTransporterClient::new(e);
-                let request = tonic::Request::new(ReportId{id});
+                let request = tonic::Request::new(irm.clone());
 
                 let _status = client.broadcast_deactivate(request).await?;
             }
