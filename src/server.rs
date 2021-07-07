@@ -34,6 +34,7 @@ pub struct MainReportHandler {
 impl MainReportHandler {
     pub async fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let db = PgReportDb::new(addr).unwrap();
+        db.load_to_cache(false).await?;
 
         let addrs = vec!["http://[::1]:50024", "http://[::1]:50025"];
 
@@ -110,7 +111,7 @@ impl ReportHandler for MainReportHandler {
 
         let rep = self
             .db
-            .insert_report(&new_report)
+            .insert_report(&new_report).await
             .expect("[!] data insertion failed");
 
         debug!("{:?}", &new_report);
@@ -167,7 +168,7 @@ impl ReportHandler for MainReportHandler {
             comment = Some(&rdr.comment);
         }
 
-        let rep = match self.db.deactivate_report(id, &operator, comment) {
+        let rep = match self.db.deactivate_report(id, &operator, comment).await {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
@@ -216,7 +217,7 @@ impl ReportHandler for MainReportHandler {
         let req = request.into_inner();
         let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ALL) {
+        let queried = match self.db.query_report(service::QueryType::ALL).await {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
@@ -272,7 +273,7 @@ impl ReportHandler for MainReportHandler {
         let req = request.into_inner();
         let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ByReporter(query)) {
+        let queried = match self.db.query_report(service::QueryType::ByReporter(query)).await {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
@@ -328,7 +329,7 @@ impl ReportHandler for MainReportHandler {
         let req = request.into_inner();
         let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ByReported(query)) {
+        let queried = match self.db.query_report(service::QueryType::ByReported(query)).await {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
@@ -387,7 +388,7 @@ impl ReportHandler for MainReportHandler {
 
         let queried = match self
             .db
-            .query_report(service::QueryType::ByTimestamp(ts_val))
+            .query_report(service::QueryType::ByTimestamp(ts_val)).await
         {
             Ok(val) => val,
             Err(_) => {
@@ -444,7 +445,7 @@ impl ReportHandler for MainReportHandler {
         let req = request.into_inner();
         let query = req.clone().id;
 
-        let queried = match self.db.query_report(service::QueryType::ById(query)) {
+        let queried = match self.db.query_report(service::QueryType::ById(query)).await {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
@@ -481,7 +482,7 @@ impl ReportHandler for MainReportHandler {
         let req = request.into_inner();
         let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ByHandler(query)) {
+        let queried = match self.db.query_report(service::QueryType::ByHandler(query)).await {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
@@ -540,7 +541,7 @@ impl ReportHandler for MainReportHandler {
 
         let queried = match self
             .db
-            .query_report(service::QueryType::ByHandleTimestamp(ts_val))
+            .query_report(service::QueryType::ByHandleTimestamp(ts_val)).await
         {
             Ok(val) => val,
             Err(_) => {
@@ -592,7 +593,7 @@ impl ReportHandler for MainReportHandler {
     ) -> Result<Response<Self::QueryReportsByActiveStream>, tonic::Status> {
         let req = request.into_inner();
         let query = req.clone().query;
-        let queried = match self.db.query_report(service::QueryType::ByActive) {
+        let queried = match self.db.query_report(service::QueryType::ByActive).await {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");

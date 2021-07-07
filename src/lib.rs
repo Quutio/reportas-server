@@ -10,9 +10,13 @@ use diesel::{insert_into, pg::PgConnection, update};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 
 use dotenv::dotenv;
+use tokio::sync::RwLock;
+use tracing::info;
 
 use std::env;
 use std::error::Error;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use self::models::{NewReport, Report};
 
@@ -27,15 +31,16 @@ pub enum QueryType {
     ByHandleTimestamp(i64),
 }
 
+#[tonic::async_trait]
 pub trait ReportDb<M>
 where
     M: diesel::r2d2::ManageConnection,
 {
-    fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>>;
+    async fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>>;
 
-    fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
+    async fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
 
-    fn deactivate_report(
+    async fn deactivate_report(
         &self,
         id: i64,
         operator: &str,
@@ -45,6 +50,7 @@ where
 
 pub struct PgReportDb {
     pool: diesel::r2d2::Pool<ConnectionManager<PgConnection>>,
+    cache: Arc<RwLock<HashMap<i64, Report>>>,
 }
 
 impl PgReportDb {
@@ -52,22 +58,50 @@ impl PgReportDb {
         let manager = ConnectionManager::<PgConnection>::new(addr);
         let pool = diesel::r2d2::Pool::builder().build(manager)?;
 
-        Ok(Self { pool })
+        Ok(Self { pool, cache: Arc::new(RwLock::new(HashMap::new())) })
+    }
+
+    pub async fn load_to_cache(&self, deactive: bool) ->  Result<(), Box<dyn Error>> {
+        use schema::reports::dsl::*;
+
+        let to_cache: Vec<Report>;
+
+        if deactive {
+            to_cache = reports.load(&self.pool.get()?)?;
+        } else {
+            to_cache = reports.filter(active.eq(true))
+                .load::<Report>(&self.pool.get()?)?;
+        }
+
+        for report in to_cache {
+            self.cache.write().await
+                .insert(report.id, report);
+        }
+
+        Ok(())
+    }
+
+    async fn insert_to_cache(&self, insertee: Report) {
+        let mut lock = self.cache.write().await;
+        lock.insert(insertee.id, insertee);
     }
 }
 
+#[tonic::async_trait]
 impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
-    fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>> {
+    async fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>> {
         use schema::reports::dsl::*;
 
         let res = insert_into(reports)
             .values(new_report)
             .get_result::<Report>(&self.pool.get()?)?;
 
+        self.insert_to_cache(res.clone()).await;
+
         Ok(res)
     }
 
-    fn deactivate_report(
+    async fn deactivate_report(
         &self,
         identifier: i64,
         operator: &str,
@@ -96,6 +130,8 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
             .set(handle_ts.eq(ts))
             .get_result::<Report>(&self.pool.get()?)?;
 
+        self.insert_to_cache(res.clone()).await;
+
         Ok(res)
     }
 
@@ -114,49 +150,167 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
     /// let queried = query_report(QueryType::ById(420));
     /// ```
     ///
-    fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
+    async fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
         use schema::reports::dsl::*;
 
         let res: Vec<Report>;
 
         match query_type {
             QueryType::ALL => {
-                res = reports.load(&self.pool.get()?)?;
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values().cloned().collect();
+
+                if cached.len() <= 0 {
+                    res = reports.load(&self.pool.get()?)?;
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
             QueryType::ByReporter(value) => {
-                res = reports
-                    .filter(reporter.eq(value))
-                    .load::<Report>(&self.pool.get()?)?;
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values()
+                    .cloned()
+                    .filter(|x| x.reporter == value)
+                    .collect();
+
+                if cached.len() <= 0 {
+                    res = reports
+                        .filter(reporter.eq(value))
+                        .load::<Report>(&self.pool.get()?)?;
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
             QueryType::ByReported(value) => {
-                res = reports
-                    .filter(reported.eq(value))
-                    .load::<Report>(&self.pool.get()?)?;
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values()
+                    .cloned()
+                    .filter(|x| x.reported == value)
+                    .collect();
+
+                if cached.len() <= 0 {
+                    res = reports
+                        .filter(reported.eq(value))
+                        .load::<Report>(&self.pool.get()?)?;
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
             QueryType::ByTimestamp(value) => {
-                res = reports
-                    .filter(timestamp.le(value))
-                    .load::<Report>(&self.pool.get()?)?;
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values()
+                    .cloned()
+                    .filter(|x| x.timestamp <= value)
+                    .collect();
+
+                if cached.len() <= 0 {
+                    res = reports
+                        .filter(timestamp.le(value))
+                        .load::<Report>(&self.pool.get()?)?;
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
             QueryType::ById(value) => {
-                res = reports
-                    .filter(id.eq(value))
-                    .load::<Report>(&self.pool.get()?)?;
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values()
+                    .cloned()
+                    .filter(|x| x.id == value)
+                    .collect();
+
+                if cached.len() <= 0 {
+                    res = reports
+                        .filter(id.eq(value))
+                        .load::<Report>(&self.pool.get()?)?;
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
             QueryType::ByActive => {
-                res = reports
-                    .filter(active.eq(true))
-                    .load::<Report>(&self.pool.get()?)?;
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values()
+                    .cloned()
+                    .filter(|x| x.active == true)
+                    .collect();
+
+                if cached.len() <= 0 {
+                    res = reports
+                        .filter(active.eq(true))
+                        .load::<Report>(&self.pool.get()?)?
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
             QueryType::ByHandler(value) => {
-                res = reports
-                    .filter(handler.eq(value))
-                    .load::<Report>(&self.pool.get()?)?;
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values()
+                    .cloned()
+                    .filter(|x| x.handler == Some(value.clone()))
+                    .collect();
+
+                if cached.len() <= 0 {
+                     res = reports
+                        .filter(handler.eq(value))
+                        .load::<Report>(&self.pool.get()?)?;
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
             QueryType::ByHandleTimestamp(value) => {
-                res = reports
-                    .filter(handle_ts.le(value))
-                    .load::<Report>(&self.pool.get()?)?;
+
+
+                let cached: Vec<Report> = self.cache.read().await
+                    .values()
+                    .cloned()
+                    .filter(|x| x.handle_ts <= Some(value.clone()))
+                    .collect();
+
+                if cached.len() <= 0 {
+                     res = reports
+                        .filter(handle_ts.eq(value))
+                        .load::<Report>(&self.pool.get()?)?;
+                } else {
+                    res = cached;
+                }
+
+                for report in &res {
+                    self.insert_to_cache(report.clone()).await;
+                }
             }
         }
 

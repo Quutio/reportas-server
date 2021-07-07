@@ -1,6 +1,6 @@
 use crate::schema::reports;
 
-#[derive(Queryable, Debug, PartialEq)]
+#[derive(Queryable, Debug, Clone, PartialEq)]
 pub struct Report {
     pub id: i64,
     pub active: bool,
