@@ -16,7 +16,7 @@ use report::{
     IdentifiedReportMessage, ReportDeactivateRequest, ReportMessage, ReportQuery, ReportRequest,
 };
 
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info};
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -172,7 +172,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(Status::unavailable("database failed"));
+                return Err(Status::failed_precondition("database failed"));
             }
         };
 
@@ -221,7 +221,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(Status::unavailable("database failed"));
+                return Err(Status::failed_precondition("database failed"));
             }
         };
 
@@ -277,7 +277,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(Status::unavailable("database failed"));
+                return Err(Status::failed_precondition("database failed"));
             }
         };
 
@@ -333,7 +333,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(Status::unavailable("database failed"));
+                return Err(Status::failed_precondition("database failed"));
             }
         };
 
@@ -393,7 +393,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(tonic::Status::unavailable("database failed"));
+                return Err(tonic::Status::failed_precondition("database failed"));
             }
         };
 
@@ -449,7 +449,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(Status::unavailable("database failed"));
+                return Err(Status::failed_precondition("database failed"));
             }
         };
 
@@ -486,7 +486,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(Status::unavailable("database failed"));
+                return Err(Status::failed_precondition("database failed"));
             }
         };
 
@@ -597,7 +597,7 @@ impl ReportHandler for MainReportHandler {
             Ok(val) => val,
             Err(_) => {
                 error!("database failed");
-                return Err(Status::unavailable("database failed"));
+                return Err(Status::failed_precondition("database failed"));
             }
         };
 
