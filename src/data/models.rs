@@ -44,6 +44,23 @@ impl From<report::IdentifiedReportMessage> for Report {
     }
 }
 
+impl From<Report> for report::IdentifiedReportMessage {
+    fn from(f: Report) -> Self {
+        Self {
+            id: f.id,
+            active: f.active,
+            timestamp: f.timestamp,
+            reporter: f.reporter,
+            reported: f.reported,
+            handler: f.handler.unwrap_or("".to_owned()),
+            handle_ts: f.handle_ts.unwrap_or(-1),
+            comment: f.comment.unwrap_or("".to_owned()),
+            desc: f.description,
+            tags: f.tags.unwrap_or("".to_owned()),
+        }
+    }
+}
+
 #[derive(Debug, Insertable)]
 #[table_name = "reports"]
 pub struct NewReport<'a> {
@@ -78,7 +95,7 @@ impl From<report::ReportMessage> for ReportRequest {
 pub struct ReportDeactivateRequest {
     pub id: i64,
     pub operator: String,
-    pub comment: String,
+    pub comment: Option<String>,
 }
 
 impl From<report::ReportDeactivateRequest> for ReportDeactivateRequest {
@@ -86,7 +103,9 @@ impl From<report::ReportDeactivateRequest> for ReportDeactivateRequest {
         Self {
             id: f.id,
             operator: f.operator,
-            comment: f.comment,
+            comment: {
+                if !f.comment.is_empty() { Some(f.comment) } else { None }
+            },
         }
     }
 }

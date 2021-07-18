@@ -1,6 +1,11 @@
 extern crate clap;
 extern crate dotenv;
 
+mod grpc;
+
+pub mod report_handler;
+pub mod report_transporter;
+
 mod transporter;
 use clap::{App, Arg};
 use service::models::NewReport;
