@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::report_handler;
 use crate::report_handler::ReportHandler;
 use crate::report_handler::Error;
@@ -6,6 +8,7 @@ use service::PgReportDb;
 use service::report;
 use service::report::IdentifiedReportMessage;
 use service::report::ReportDeactivateRequest;
+use service::report::ReportQuery;
 use service::report::ReportRequest;
 use service::report::report_handler_server;
 
@@ -65,6 +68,9 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
                     Error::TransportError => {
                         return Err(Status::aborted(e.to_string()));
                     }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
                 }
             }
         };
@@ -82,9 +88,31 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         request: Request<ReportDeactivateRequest>,
     ) -> Result<Response<IdentifiedReportMessage>, tonic::Status> {
 
-        let rep = self.deactivate_report(request.into_inner().into()).await.unwrap();
+        let rdr = request.into_inner();
 
-        Ok(Response::new(irm))
+        let rep = match self.handler.deactivate_report(rdr.clone().into()).await {
+            Ok(val) => val,
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
+        };
+
+        info!(
+            "\n\nrpc#DeactivateReport :: ({:?}) \n\n{:?}\n",
+            &rdr, &rep
+        );
+
+        Ok(Response::new(rep.into()))
     }
 
     ///
@@ -94,38 +122,36 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryAllReportsStream>, Status> {
+
         let req = request.into_inner();
-        let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ALL).await {
+        let res = match self.handler.query_all_reports().await {
             Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(Status::failed_precondition("database failed"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
-
-        let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 
         info!(
             "\n\nrpc#QueryAllReports :: ({:?}) \n\nGot {} reports to stream\n",
             &req,
-            &queried.len()
+            &res.len()
         );
 
-        for rep in queried.iter() {
-            let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                active: rep.active,
-                timestamp: rep.timestamp,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                handler: rep.handler.clone().unwrap_or("".to_owned()),
-                handle_ts: rep.handle_ts.clone().unwrap_or(-1),
-                comment: rep.comment.clone().unwrap_or("".to_owned()),
-                desc: rep.description.clone(),
-                tags: rep.tags.clone().unwrap_or("".to_owned()),
-            };
+        let mut irms = Vec::<IdentifiedReportMessage>::new();
+
+        for rep in res.into_iter() {
+            let irm = rep.into();
 
             irms.push(irm);
         }
@@ -150,15 +176,24 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByReporterStream>, Status> {
-        let req = request.into_inner();
-        let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ByReporter(query)).await {
+        let req = request.into_inner();
+
+        let res = match self.handler.query_reports_by_reporter(req.clone().into()).await {
             Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(Status::failed_precondition("database failed"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
@@ -166,23 +201,11 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         info!(
             "\n\nrpc#QueryReportsByReporter :: ({:?}) \n\nGot {} reports to stream\n",
             &req,
-            &queried.len()
+            &res.len()
         );
 
-        for rep in queried.iter() {
-            let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                active: rep.active,
-                timestamp: rep.timestamp,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                handler: rep.handler.clone().unwrap_or("".to_owned()),
-                handle_ts: rep.handle_ts.clone().unwrap_or(-1),
-                comment: rep.comment.clone().unwrap_or("".to_owned()),
-                desc: rep.description.clone(),
-                tags: rep.tags.clone().unwrap_or("".to_owned()),
-            };
-
+        for rep in res.into_iter() {
+            let irm = rep.into();
             irms.push(irm);
         }
 
@@ -206,15 +229,24 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByReportedStream>, Status> {
-        let req = request.into_inner();
-        let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ByReported(query)).await {
+        let req = request.into_inner();
+
+         let res = match self.handler.query_reports_by_reported(req.clone().into()).await {
             Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(Status::failed_precondition("database failed"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
@@ -222,23 +254,11 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         info!(
             "\n\nrpc#QueryReportsByReported :: ({:?}) \n\nGot {} reports to stream\n",
             &req,
-            &queried.len()
+            &res.len()
         );
 
-        for rep in queried.iter() {
-            let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                active: rep.active,
-                timestamp: rep.timestamp,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                handler: rep.handler.clone().unwrap_or("".to_owned()),
-                handle_ts: rep.handle_ts.clone().unwrap_or(-1),
-                comment: rep.comment.clone().unwrap_or("".to_owned()),
-                desc: rep.description.clone(),
-                tags: rep.tags.clone().unwrap_or("".to_owned()),
-            };
-
+        for rep in res.into_iter() {
+            let irm = rep.into();
             irms.push(irm);
         }
 
@@ -258,47 +278,36 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByTimestampStream>, tonic::Status> {
+
         let req = request.into_inner();
-        let query = req.clone().query;
 
-        let ts_val = match query.parse::<i64>() {
+         let res = match self.handler.query_reports_by_timestamp(req.clone().into()).await {
             Ok(val) => val,
-            Err(_) => return Err(tonic::Status::invalid_argument("invalid timestamp")),
-        };
-
-        let queried = match self
-            .db
-            .query_report(service::QueryType::ByTimestamp(ts_val)).await
-        {
-            Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(tonic::Status::failed_precondition("database failed"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
 
         info!(
             "\n\nrpc#QueryReportsByTimestamp :: ({:?}) \n\nGot {} reports to stream\n",
             &req,
-            &queried.len()
+            &res.len()
         );
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
 
-        for rep in queried.iter() {
-            let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                active: rep.active,
-                timestamp: rep.timestamp,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                handler: rep.handler.clone().unwrap_or("".to_owned()),
-                handle_ts: rep.handle_ts.clone().unwrap_or(-1),
-                comment: rep.comment.clone().unwrap_or("".to_owned()),
-                desc: rep.description.clone(),
-                tags: rep.tags.clone().unwrap_or("".to_owned()),
-            };
-
+        for rep in res.into_iter() {
+            let irm = rep.into();
             irms.push(irm);
         }
 
@@ -322,52 +331,59 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<IdentifiedReportMessage>, Status> {
-        let req = request.into_inner();
-        let query = req.clone().id;
 
-        let queried = match self.db.query_report(service::QueryType::ById(query)).await {
+        let req = request.into_inner();
+
+         let res = match self.handler.query_reports_by_id(req.clone().into()).await {
             Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(Status::failed_precondition("database failed"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
 
         info!("\n\nrpc#QueryReportsById :: ({:?}) \n", &req);
 
-        if queried.is_empty() {
+        if res.is_empty() {
             return Err(Status::not_found("not found"));
         }
 
-        let res = IdentifiedReportMessage {
-            id: queried[0].id as i64,
-            active: queried[0].active,
-            timestamp: queried[0].timestamp,
-            reporter: queried[0].reporter.clone(),
-            reported: queried[0].reported.clone(),
-            handler: queried[0].handler.clone().unwrap_or("".to_owned()),
-            handle_ts: queried[0].handle_ts.clone().unwrap_or(-1),
-            comment: queried[0].comment.clone().unwrap_or("".to_owned()),
-            desc: queried[0].reported.clone(),
-            tags: queried[0].tags.clone().unwrap_or("".to_owned()),
-        };
+        let res0 = res[0].clone();
 
-        Ok(Response::new(res))
+        Ok(Response::new(res0.into()))
     }
 
     async fn query_reports_by_handler(
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByHandlerStream>, Status> {
-        let req = request.into_inner();
-        let query = req.clone().query;
 
-        let queried = match self.db.query_report(service::QueryType::ByHandler(query)).await {
+        let req = request.into_inner();
+
+         let res = match self.handler.query_reports_by_handler(req.clone().into()).await {
             Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(Status::failed_precondition("database failed"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
@@ -375,23 +391,11 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         info!(
             "\n\nrpc#QueryReportsByHandler :: ({:?}) \n\nGot {} reports to stream\n",
             &req,
-            &queried.len()
+            &res.len()
         );
 
-        for rep in queried.iter() {
-            let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                active: rep.active,
-                timestamp: rep.timestamp,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                handler: rep.handler.clone().unwrap_or("".to_owned()),
-                handle_ts: rep.handle_ts.unwrap_or(-1),
-                comment: rep.comment.clone().unwrap_or("".to_owned()),
-                desc: rep.description.clone(),
-                tags: rep.tags.clone().unwrap_or("".to_owned()),
-            };
-
+        for rep in res.into_iter() {
+            let irm = rep.into();
             irms.push(irm);
         }
 
@@ -411,23 +415,24 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByHandleTimestampStream>, Status> {
+
         let req = request.into_inner();
-        let query = req.clone().query;
 
-        let ts_val = match query.parse::<i64>() {
+         let res = match self.handler.query_reports_by_handle_timestamp(req.clone().into()).await {
             Ok(val) => val,
-            Err(_) => return Err(tonic::Status::invalid_argument("invalid timestamp")),
-        };
-
-        let queried = match self
-            .db
-            .query_report(service::QueryType::ByHandleTimestamp(ts_val)).await
-        {
-            Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(tonic::Status::invalid_argument("invalid timestamp"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
@@ -435,23 +440,11 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         info!(
             "\n\nrpc#QueryReportsByHandleTimestamp :: ({:?}) \n\nGot {} reports to stream\n",
             &req,
-            &queried.len()
+            &res.len()
         );
 
-        for rep in queried.iter() {
-            let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                active: rep.active,
-                timestamp: rep.timestamp,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                handler: rep.handler.clone().unwrap_or("".to_owned()),
-                handle_ts: rep.handle_ts.clone().unwrap_or(-1),
-                comment: rep.comment.clone().unwrap_or("".to_owned()),
-                desc: rep.description.clone(),
-                tags: rep.tags.clone().unwrap_or("".to_owned()),
-            };
-
+        for rep in res.into_iter() {
+            let irm = rep.into();
             irms.push(irm);
         }
 
@@ -471,14 +464,24 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByActiveStream>, tonic::Status> {
+
         let req = request.into_inner();
-        let query = req.clone().query;
-        let queried = match self.db.query_report(service::QueryType::ByActive).await {
+
+         let res = match self.handler.query_reports_by_active().await {
             Ok(val) => val,
-            Err(_) => {
-                error!("database failed");
-                return Err(Status::failed_precondition("database failed"));
-            }
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                    Error::InvalidTimestamp => {
+                        return Err(Status::invalid_argument(e.to_string()));
+                    }
+                }
+            },
         };
 
         let mut irms: Vec<IdentifiedReportMessage> = Vec::new();
@@ -486,23 +489,11 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         info!(
             "\n\nrpc#QueryReportsByActive :: ({:?}) \n\nGot {} reports to stream\n",
             &req,
-            &queried.len()
+            &res.len()
         );
 
-        for rep in queried.iter() {
-            let irm = IdentifiedReportMessage {
-                id: rep.id as i64,
-                active: rep.active,
-                timestamp: rep.timestamp,
-                reporter: rep.reporter.clone(),
-                reported: rep.reported.clone(),
-                handler: rep.handler.clone().unwrap_or("".to_owned()),
-                handle_ts: rep.handle_ts.clone().unwrap_or(-1),
-                comment: rep.comment.clone().unwrap_or("".to_owned()),
-                desc: rep.description.clone(),
-                tags: rep.tags.clone().unwrap_or("".to_owned()),
-            };
-
+        for rep in res.into_iter() {
+            let irm = rep.into();
             irms.push(irm);
         }
 
