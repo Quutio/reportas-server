@@ -10,6 +10,21 @@ pub struct ReportHandler {
 
 impl ReportHandler {
 
+    pub async fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let db = PgReportDb::new(addr).unwrap();
+        db.load_to_cache(false).await?;
+
+        let addrs = vec!["http://[::1]:50024", "http://[::1]:50025"];
+
+        let transporter = Transporter::new(addrs).await?;
+
+        Ok(ReportHandler {
+            db: db,
+            transporter: transporter,
+        })
+    }
+
+
     pub async fn submit_report(&self, req: ReportRequest) -> Result<Report, Box<dyn std::error::Error>> {
 
         let utc = chrono::Utc::now();
@@ -31,7 +46,11 @@ impl ReportHandler {
             tags: tags,
         };
 
-        Ok(self.db.insert_report(&new_report).await?)
+        let rep = self.db.insert_report(&new_report).await?;
+
+        self.transporter.transport(rep.clone().into()).await?;
+
+        Ok(rep.into())
     }
 
     pub async fn deactivate_report(&self, req: ReportDeactivateRequest) -> Result<Report, Box<dyn std::error::Error>> {
