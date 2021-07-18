@@ -1,7 +1,7 @@
 
 use service::{PgReportDb, QueryType, ReportDb};
 use thiserror::Error;
-use crate::{data::{models::*}, transporter::Transporter};
+use crate::{data::{models::*}, report_transporter::Transporter};
 
 #[derive(Error, Debug)]
 pub enum Error {

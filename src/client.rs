@@ -4,7 +4,7 @@ use clap::{App, Arg};
 use report::report_handler_client::ReportHandlerClient;
 use report::{ReportMessage, ReportRequest};
 
-mod transporter;
+mod report_transporter;
 
 pub mod report {
     tonic::include_proto!("report");
