@@ -110,16 +110,6 @@ impl From<report::ReportDeactivateRequest> for ReportDeactivateRequest {
     }
 }
 
-impl From<ReportDeactivateRequest> for report::ReportDeactivateRequest {
-    fn from(f: ReportDeactivateRequest) -> Self {
-        Self {
-            id: f.id,
-            operator: f.operator,
-            comment: f.comment.unwrap_or("".to_string()),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReportQuery {
     pub query: String,
