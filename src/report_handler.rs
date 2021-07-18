@@ -61,8 +61,10 @@ impl ReportHandler {
             Err(_) => return Err(Error::DatabaseFailed),
         };
 
-        self.transporter.transport(rep.clone().into()).await
-            .map_err(|_| Error::TransportError);
+        match self.transporter.transport(rep.clone().into()).await {
+            Ok(_) => {},
+            Err(_) => return Err(Error::TransportError),
+        }
 
         Ok(rep.into())
     }
@@ -74,8 +76,10 @@ impl ReportHandler {
             Err(_) => return Err(Error::DatabaseFailed),
         };
 
-        self.transporter.deactivate(rep.clone().into()).await
-            .map_err(|_| Error::TransportError);
+        match self.transporter.deactivate(rep.clone().into()).await {
+            Ok(_) => {},
+            Err(_) => return Err(Error::TransportError),
+        }
 
         Ok(rep)
     }
