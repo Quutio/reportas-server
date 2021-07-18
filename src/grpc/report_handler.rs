@@ -1,5 +1,6 @@
 use crate::report_handler;
 use crate::report_handler::ReportHandler;
+use crate::report_handler::Error;
 
 use service::PgReportDb;
 use service::report;
@@ -54,7 +55,19 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
             }
         };
 
-        let rep = self.handler.submit_report(req_msg.clone().into()).await.unwrap();
+        let rep = match self.handler.submit_report(req_msg.clone().into()).await {
+            Ok(val) => val,
+            Err(e) => {
+                match e {
+                    Error::DatabaseFailed => {
+                        return Err(Status::failed_precondition(e.to_string()));
+                    }
+                    Error::TransportError => {
+                        return Err(Status::aborted(e.to_string()));
+                    }
+                }
+            }
+        };
 
         info!(
             "\n\nrpc#SubmitReport :: ({:?}) \n\n{:?}\n",

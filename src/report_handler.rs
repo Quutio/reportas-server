@@ -1,7 +1,17 @@
 
 use service::{PgReportDb, QueryType, ReportDb};
-
+use thiserror::Error;
 use crate::{data::{models::*}, transporter::Transporter};
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("database failed")]
+    DatabaseFailed,
+    #[error("transport error")]
+    TransportError,
+    #[error("invalid timestamp")]
+    InvalidTimestamp,
+}
 
 pub struct ReportHandler {
     db: PgReportDb,
@@ -25,7 +35,7 @@ impl ReportHandler {
     }
 
 
-    pub async fn submit_report(&self, req: ReportRequest) -> Result<Report, Box<dyn std::error::Error>> {
+    pub async fn submit_report(&self, req: ReportRequest) -> Result<Report, Error> {
 
         let utc = chrono::Utc::now();
         let ts = utc.timestamp();
@@ -46,68 +56,112 @@ impl ReportHandler {
             tags: tags,
         };
 
-        let rep = self.db.insert_report(&new_report).await?;
+        let rep = match self.db.insert_report(&new_report).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
 
-        self.transporter.transport(rep.clone().into()).await?;
+        self.transporter.transport(rep.clone().into()).await
+            .map_err(|_| Error::TransportError);
 
         Ok(rep.into())
     }
 
-    pub async fn deactivate_report(&self, req: ReportDeactivateRequest) -> Result<Report, Box<dyn std::error::Error>> {
+    pub async fn deactivate_report(&self, req: ReportDeactivateRequest) -> Result<Report, Error> {
 
-        let rep = self.db.deactivate_report(req.id, &req.operator, req.comment.as_deref()).await?;
+        let rep = match self.db.deactivate_report(req.id, &req.operator, req.comment.as_deref()).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
 
-        self.transporter.deactivate(rep.clone().into()).await?;
+        self.transporter.deactivate(rep.clone().into()).await
+            .map_err(|_| Error::TransportError);
 
         Ok(rep)
     }
 
-    pub async fn query_all_reports(&self) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
-        let queried = self.db.query_report(QueryType::ALL).await?;
+    pub async fn query_all_reports(&self) -> Result<Vec<Report>, Error> {
+        let queried = match self.db.query_report(QueryType::ALL).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
+
         Ok(queried)
     }
 
-    pub async fn query_reports_by_reporter(&self, query: ReportQuery) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
-        let queried = self.db.query_report(QueryType::ByReporter(query.query)).await?;
+    pub async fn query_reports_by_reporter(&self, query: ReportQuery) -> Result<Vec<Report>, Error> {
+        let queried = match self.db.query_report(QueryType::ByReporter(query.query)).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
+
         Ok(queried)
     }
 
-    pub async fn query_reports_by_reported(&self, query: ReportQuery) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
-        let queried = self.db.query_report(QueryType::ByReported(query.query)).await?;
+    pub async fn query_reports_by_reported(&self, query: ReportQuery) -> Result<Vec<Report>, Error> {
+        let queried = match self.db.query_report(QueryType::ByReported(query.query)).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
+
         Ok(queried)
     }
 
-    pub async fn query_reports_by_timestamp(&self, query: ReportQuery) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
+    pub async fn query_reports_by_timestamp(&self, query: ReportQuery) -> Result<Vec<Report>, Error> {
 
-        let ts = query.query.parse::<i64>()?;
+        let ts = match query.query.parse::<i64>() {
+            Ok(val) => val,
+            Err(_) => return Err(Error::InvalidTimestamp),
+        };
 
-        let queried = self.db.query_report(QueryType::ByTimestamp(ts)).await?;
+        let queried = match self.db.query_report(QueryType::ByTimestamp(ts)).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
+
         Ok(queried)
     }
 
-    pub async fn query_reports_by_id(&self, query: ReportQuery) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
+    pub async fn query_reports_by_id(&self, query: ReportQuery) -> Result<Vec<Report>, Error> {
 
-        let queried = self.db.query_report(QueryType::ById(query.id)).await?;
+        let queried = match self.db.query_report(QueryType::ById(query.id)).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
+
         Ok(queried)
     }
 
-    pub async fn query_reports_by_handler(&self, query: ReportQuery) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
+    pub async fn query_reports_by_handler(&self, query: ReportQuery) -> Result<Vec<Report>, Error> {
 
-        let queried = self.db.query_report(QueryType::ByHandler(query.query)).await?;
+        let queried = match self.db.query_report(QueryType::ByHandler(query.query)).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
+
         Ok(queried)
     }
 
-    pub async fn query_reports_by_handle_timestamp(&self, query: ReportQuery) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
+    pub async fn query_reports_by_handle_timestamp(&self, query: ReportQuery) -> Result<Vec<Report>, Error> {
 
-        let ts = query.query.parse::<i64>()?;
+        let ts = match query.query.parse::<i64>() {
+            Ok(val) => val,
+            Err(_) => return Err(Error::InvalidTimestamp),
+        };
 
-        let queried = self.db.query_report(QueryType::ByHandleTimestamp(ts)).await?;
+        let queried = match self.db.query_report(QueryType::ByHandleTimestamp(ts)).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
         Ok(queried)
     }
 
-    pub async fn query_reports_by_active(&self) -> Result<Vec<Report>, Box<dyn std::error::Error>> {
+    pub async fn query_reports_by_active(&self) -> Result<Vec<Report>, Error> {
 
-        let queried = self.db.query_report(QueryType::ByActive).await?;
+        let queried = match self.db.query_report(QueryType::ByActive).await {
+            Ok(val) => val,
+            Err(_) => return Err(Error::DatabaseFailed),
+        };
         Ok(queried)
     }
 }
