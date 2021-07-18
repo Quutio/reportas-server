@@ -21,10 +21,6 @@ use tracing::{debug, error, info};
 use std::sync::Arc;
 use std::sync::Mutex;
 
-pub mod report {
-    tonic::include_proto!("report");
-}
-
 pub struct MainReportHandler {
     db: PgReportDb,
     transporter: Transporter,

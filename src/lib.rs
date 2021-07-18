@@ -1,8 +1,10 @@
-pub mod models;
-pub mod schema;
+pub mod data;
 
 #[macro_use]
 extern crate diesel;
+
+pub use data::schema;
+pub use data::models;
 
 extern crate dotenv;
 
@@ -19,6 +21,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use self::models::{NewReport, Report};
+
+pub mod report {
+    tonic::include_proto!("report");
+}
 
 pub enum QueryType {
     ALL,
