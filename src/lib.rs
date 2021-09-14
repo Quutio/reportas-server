@@ -11,11 +11,8 @@ extern crate dotenv;
 use diesel::{insert_into, pg::PgConnection, update};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 
-use dotenv::dotenv;
 use tokio::sync::RwLock;
-use tracing::info;
 
-use std::env;
 use std::error::Error;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -26,6 +23,9 @@ pub mod report {
     tonic::include_proto!("report");
 }
 
+///
+/// Specify type kind of query to execute.
+///
 pub enum QueryType {
     ALL,
     ByReporter(String),
@@ -151,7 +151,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
     /// # Examples
     ///
     /// ```
-    /// use models::QueryType;
+    /// use service::models::QueryType;
     ///
     /// let queried = query_report(QueryType::ById(420));
     /// ```

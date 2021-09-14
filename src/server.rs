@@ -11,7 +11,6 @@ use grpc::report_handler::GrpcReportHandler;
 use clap::{App, Arg};
 use service::*;
 
-
 use report::report_handler_server::ReportHandlerServer;
 
 use tonic::transport::Server;

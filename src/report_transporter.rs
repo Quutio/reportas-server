@@ -8,6 +8,7 @@ pub struct Transporter {
     endpoints: Vec<Endpoint>,
 }
 
+#[allow(dead_code)]
 impl Transporter {
     pub async fn new(addrs: Vec<&'static str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut endpoints = Vec::<Endpoint>::new();

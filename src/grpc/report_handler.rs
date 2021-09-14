@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
-use crate::report_handler;
 use crate::report_handler::ReportHandler;
 use crate::report_handler::Error;
 
-use service::PgReportDb;
-use service::report;
 use service::report::IdentifiedReportMessage;
 use service::report::ReportDeactivateRequest;
 use service::report::ReportQuery;
