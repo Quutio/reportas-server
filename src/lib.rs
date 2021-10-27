@@ -273,7 +273,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .await
                     .values()
                     .cloned()
-                    .filter(|x| x.active == true)
+                    .filter(|x| x.active)
                     .collect();
 
                 if cached.len() <= 0 {
@@ -317,7 +317,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .await
                     .values()
                     .cloned()
-                    .filter(|x| x.handle_ts <= Some(value.clone()))
+                    .filter(|x| x.handle_ts <= Some(value))
                     .collect();
 
                 if cached.len() <= 0 {

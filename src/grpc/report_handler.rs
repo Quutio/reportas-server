@@ -24,7 +24,7 @@ impl GrpcReportHandler {
     pub async fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let handler = ReportHandler::new(addr).await?;
 
-        Ok(GrpcReportHandler { handler: handler })
+        Ok(GrpcReportHandler { handler })
     }
 }
 

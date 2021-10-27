@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dburl = &dotenv::var("DATABASE_URL").unwrap();
     debug!("DATABASE_URL :: -> {}", &dburl);
 
-    let report_handler = GrpcReportHandler::new(&dburl).await?;
+    let report_handler = GrpcReportHandler::new(dburl).await?;
 
     info!("ReportHandler initiated");
     info!("LISTENING TO CHANNEL BEGUN: {}", &addr);

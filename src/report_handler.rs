@@ -27,8 +27,8 @@ impl ReportHandler {
         let transporter = Transporter::new(addrs).await?;
 
         Ok(ReportHandler {
-            db: db,
-            transporter: transporter,
+            db,
+            transporter,
         })
     }
 
@@ -49,7 +49,7 @@ impl ReportHandler {
             reporter: req.reporter.as_str(),
             reported: req.reported.as_str(),
             description: req.desc.as_str(),
-            tags: tags,
+            tags,
         };
 
         let rep = match self.db.insert_report(&new_report).await {
@@ -62,7 +62,7 @@ impl ReportHandler {
             Err(_) => return Err(Error::TransportError),
         }
 
-        Ok(rep.into())
+        Ok(rep)
     }
 
     pub async fn deactivate_report(&self, req: ReportDeactivateRequest) -> Result<Report, Error> {
