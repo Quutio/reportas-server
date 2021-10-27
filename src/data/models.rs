@@ -28,18 +28,34 @@ impl From<report::IdentifiedReportMessage> for Report {
             reporter: f.reporter,
             reported: f.reported,
             handler: {
-                if !f.handler.is_empty() { Some(f.handler) } else { None }
+                if !f.handler.is_empty() {
+                    Some(f.handler)
+                } else {
+                    None
+                }
             },
             handle_ts: {
-                if !f.handle_ts == -1 { Some(f.handle_ts) } else { None }
+                if !f.handle_ts == -1 {
+                    Some(f.handle_ts)
+                } else {
+                    None
+                }
             },
             comment: {
-                if !f.comment.is_empty() { Some(f.comment) } else { None }
+                if !f.comment.is_empty() {
+                    Some(f.comment)
+                } else {
+                    None
+                }
             },
             description: f.desc,
             tags: {
-                if !f.tags.is_empty() { Some(f.tags) } else { None }
-            }
+                if !f.tags.is_empty() {
+                    Some(f.tags)
+                } else {
+                    None
+                }
+            },
         }
     }
 }
@@ -104,7 +120,11 @@ impl From<report::ReportDeactivateRequest> for ReportDeactivateRequest {
             id: f.id,
             operator: f.operator,
             comment: {
-                if !f.comment.is_empty() { Some(f.comment) } else { None }
+                if !f.comment.is_empty() {
+                    Some(f.comment)
+                } else {
+                    None
+                }
             },
         }
     }

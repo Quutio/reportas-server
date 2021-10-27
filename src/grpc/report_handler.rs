@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use crate::report_handler::ReportHandler;
 use crate::report_handler::Error;
+use crate::report_handler::ReportHandler;
 
+use service::report::report_handler_server;
 use service::report::IdentifiedReportMessage;
 use service::report::ReportDeactivateRequest;
 use service::report::ReportQuery;
 use service::report::ReportRequest;
-use service::report::report_handler_server;
 
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -15,7 +15,6 @@ use tonic::Request;
 use tonic::Response;
 use tonic::Status;
 use tracing::info;
-
 
 pub struct GrpcReportHandler {
     handler: ReportHandler,
@@ -25,15 +24,12 @@ impl GrpcReportHandler {
     pub async fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let handler = ReportHandler::new(addr).await?;
 
-        Ok(GrpcReportHandler {
-            handler: handler,
-        })
+        Ok(GrpcReportHandler { handler: handler })
     }
 }
 
 #[tonic::async_trait]
 impl report_handler_server::ReportHandler for GrpcReportHandler {
-
     type QueryAllReportsStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByReporterStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
     type QueryReportsByReportedStream = ReceiverStream<Result<IdentifiedReportMessage, Status>>;
@@ -57,25 +53,20 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
 
         let rep = match self.handler.submit_report(req_msg.clone().into()).await {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
                 }
-            }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
+                }
+            },
         };
 
-        info!(
-            "\n\nrpc#SubmitReport :: ({:?}) \n\n{:?}\n",
-            &req_msg, &rep
-        );
+        info!("\n\nrpc#SubmitReport :: ({:?}) \n\n{:?}\n", &req_msg, &rep);
 
         Ok(Response::new(rep.into()))
     }
@@ -84,30 +75,24 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportDeactivateRequest>,
     ) -> Result<Response<IdentifiedReportMessage>, tonic::Status> {
-
         let rdr = request.into_inner();
 
         let rep = match self.handler.deactivate_report(rdr.clone().into()).await {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
 
-        info!(
-            "\n\nrpc#DeactivateReport :: ({:?}) \n\n{:?}\n",
-            &rdr, &rep
-        );
+        info!("\n\nrpc#DeactivateReport :: ({:?}) \n\n{:?}\n", &rdr, &rep);
 
         Ok(Response::new(rep.into()))
     }
@@ -119,22 +104,19 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryAllReportsStream>, Status> {
-
         let req = request.into_inner();
 
         let res = match self.handler.query_all_reports().await {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -173,22 +155,23 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByReporterStream>, Status> {
-
         let req = request.into_inner();
 
-        let res = match self.handler.query_reports_by_reporter(req.clone().into()).await {
+        let res = match self
+            .handler
+            .query_reports_by_reporter(req.clone().into())
+            .await
+        {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -226,22 +209,23 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByReportedStream>, Status> {
-
         let req = request.into_inner();
 
-         let res = match self.handler.query_reports_by_reported(req.clone().into()).await {
+        let res = match self
+            .handler
+            .query_reports_by_reported(req.clone().into())
+            .await
+        {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -275,22 +259,23 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByTimestampStream>, tonic::Status> {
-
         let req = request.into_inner();
 
-         let res = match self.handler.query_reports_by_timestamp(req.clone().into()).await {
+        let res = match self
+            .handler
+            .query_reports_by_timestamp(req.clone().into())
+            .await
+        {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -328,22 +313,19 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<IdentifiedReportMessage>, Status> {
-
         let req = request.into_inner();
 
-         let res = match self.handler.query_reports_by_id(req.clone().into()).await {
+        let res = match self.handler.query_reports_by_id(req.clone().into()).await {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -363,22 +345,23 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByHandlerStream>, Status> {
-
         let req = request.into_inner();
 
-         let res = match self.handler.query_reports_by_handler(req.clone().into()).await {
+        let res = match self
+            .handler
+            .query_reports_by_handler(req.clone().into())
+            .await
+        {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -412,22 +395,23 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByHandleTimestampStream>, Status> {
-
         let req = request.into_inner();
 
-         let res = match self.handler.query_reports_by_handle_timestamp(req.clone().into()).await {
+        let res = match self
+            .handler
+            .query_reports_by_handle_timestamp(req.clone().into())
+            .await
+        {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -461,22 +445,19 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
         &self,
         request: Request<ReportQuery>,
     ) -> Result<Response<Self::QueryReportsByActiveStream>, tonic::Status> {
-
         let req = request.into_inner();
 
-         let res = match self.handler.query_reports_by_active().await {
+        let res = match self.handler.query_reports_by_active().await {
             Ok(val) => val,
-            Err(e) => {
-                match e {
-                    Error::DatabaseFailed => {
-                        return Err(Status::failed_precondition(e.to_string()));
-                    }
-                    Error::TransportError => {
-                        return Err(Status::aborted(e.to_string()));
-                    }
-                    Error::InvalidTimestamp => {
-                        return Err(Status::invalid_argument(e.to_string()));
-                    }
+            Err(e) => match e {
+                Error::DatabaseFailed => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+                Error::TransportError => {
+                    return Err(Status::aborted(e.to_string()));
+                }
+                Error::InvalidTimestamp => {
+                    return Err(Status::invalid_argument(e.to_string()));
                 }
             },
         };
@@ -505,5 +486,4 @@ impl report_handler_server::ReportHandler for GrpcReportHandler {
 
         Ok(Response::new(ReceiverStream::new(rx)))
     }
-
 }

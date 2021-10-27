@@ -3,8 +3,8 @@ pub mod data;
 #[macro_use]
 extern crate diesel;
 
-pub use data::schema;
 pub use data::models;
+pub use data::schema;
 
 extern crate dotenv;
 
@@ -13,8 +13,8 @@ use diesel::{prelude::*, r2d2::ConnectionManager};
 
 use tokio::sync::RwLock;
 
-use std::error::Error;
 use std::collections::HashMap;
+use std::error::Error;
 use std::sync::Arc;
 
 use self::models::{NewReport, Report};
@@ -64,10 +64,13 @@ impl PgReportDb {
         let manager = ConnectionManager::<PgConnection>::new(addr);
         let pool = diesel::r2d2::Pool::builder().build(manager)?;
 
-        Ok(Self { pool, cache: Arc::new(RwLock::new(HashMap::new())) })
+        Ok(Self {
+            pool,
+            cache: Arc::new(RwLock::new(HashMap::new())),
+        })
     }
 
-    pub async fn load_to_cache(&self, deactive: bool) ->  Result<(), Box<dyn Error>> {
+    pub async fn load_to_cache(&self, deactive: bool) -> Result<(), Box<dyn Error>> {
         use schema::reports::dsl::*;
 
         let to_cache: Vec<Report>;
@@ -75,13 +78,13 @@ impl PgReportDb {
         if deactive {
             to_cache = reports.load(&self.pool.get()?)?;
         } else {
-            to_cache = reports.filter(active.eq(true))
+            to_cache = reports
+                .filter(active.eq(true))
                 .load::<Report>(&self.pool.get()?)?;
         }
 
         for report in to_cache {
-            self.cache.write().await
-                .insert(report.id, report);
+            self.cache.write().await.insert(report.id, report);
         }
 
         Ok(())
@@ -163,9 +166,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
 
         match query_type {
             QueryType::ALL => {
-
-                let cached: Vec<Report> = self.cache.read().await
-                    .values().cloned().collect();
+                let cached: Vec<Report> = self.cache.read().await.values().cloned().collect();
 
                 if cached.len() <= 0 {
                     res = reports.load(&self.pool.get()?)?;
@@ -178,8 +179,10 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
             QueryType::ByReporter(value) => {
-
-                let cached: Vec<Report> = self.cache.read().await
+                let cached: Vec<Report> = self
+                    .cache
+                    .read()
+                    .await
                     .values()
                     .cloned()
                     .filter(|x| x.reporter == value)
@@ -198,8 +201,10 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
             QueryType::ByReported(value) => {
-
-                let cached: Vec<Report> = self.cache.read().await
+                let cached: Vec<Report> = self
+                    .cache
+                    .read()
+                    .await
                     .values()
                     .cloned()
                     .filter(|x| x.reported == value)
@@ -218,8 +223,10 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
             QueryType::ByTimestamp(value) => {
-
-                let cached: Vec<Report> = self.cache.read().await
+                let cached: Vec<Report> = self
+                    .cache
+                    .read()
+                    .await
                     .values()
                     .cloned()
                     .filter(|x| x.timestamp <= value)
@@ -238,8 +245,10 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
             QueryType::ById(value) => {
-
-                let cached: Vec<Report> = self.cache.read().await
+                let cached: Vec<Report> = self
+                    .cache
+                    .read()
+                    .await
                     .values()
                     .cloned()
                     .filter(|x| x.id == value)
@@ -258,8 +267,10 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
             QueryType::ByActive => {
-
-                let cached: Vec<Report> = self.cache.read().await
+                let cached: Vec<Report> = self
+                    .cache
+                    .read()
+                    .await
                     .values()
                     .cloned()
                     .filter(|x| x.active == true)
@@ -278,15 +289,17 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
             QueryType::ByHandler(value) => {
-
-                let cached: Vec<Report> = self.cache.read().await
+                let cached: Vec<Report> = self
+                    .cache
+                    .read()
+                    .await
                     .values()
                     .cloned()
                     .filter(|x| x.handler == Some(value.clone()))
                     .collect();
 
                 if cached.len() <= 0 {
-                     res = reports
+                    res = reports
                         .filter(handler.eq(value))
                         .load::<Report>(&self.pool.get()?)?;
                 } else {
@@ -298,16 +311,17 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
             QueryType::ByHandleTimestamp(value) => {
-
-
-                let cached: Vec<Report> = self.cache.read().await
+                let cached: Vec<Report> = self
+                    .cache
+                    .read()
+                    .await
                     .values()
                     .cloned()
                     .filter(|x| x.handle_ts <= Some(value.clone()))
                     .collect();
 
                 if cached.len() <= 0 {
-                     res = reports
+                    res = reports
                         .filter(handle_ts.eq(value))
                         .load::<Report>(&self.pool.get()?)?;
                 } else {
