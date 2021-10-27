@@ -168,7 +168,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
             QueryType::ALL => {
                 let cached: Vec<Report> = self.cache.read().await.values().cloned().collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports.load(&self.pool.get()?)?;
                 } else {
                     res = cached;
@@ -188,7 +188,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(|x| x.reporter == value)
                     .collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports
                         .filter(reporter.eq(value))
                         .load::<Report>(&self.pool.get()?)?;
@@ -210,7 +210,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(|x| x.reported == value)
                     .collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports
                         .filter(reported.eq(value))
                         .load::<Report>(&self.pool.get()?)?;
@@ -232,7 +232,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(|x| x.timestamp <= value)
                     .collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports
                         .filter(timestamp.le(value))
                         .load::<Report>(&self.pool.get()?)?;
@@ -254,7 +254,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(|x| x.id == value)
                     .collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports
                         .filter(id.eq(value))
                         .load::<Report>(&self.pool.get()?)?;
@@ -276,7 +276,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(|x| x.active)
                     .collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports
                         .filter(active.eq(true))
                         .load::<Report>(&self.pool.get()?)?
@@ -298,7 +298,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(|x| x.handler == Some(value.clone()))
                     .collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports
                         .filter(handler.eq(value))
                         .load::<Report>(&self.pool.get()?)?;
@@ -320,7 +320,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                     .filter(|x| x.handle_ts <= Some(value))
                     .collect();
 
-                if cached.len() <= 0 {
+                if cached.is_empty() {
                     res = reports
                         .filter(handle_ts.eq(value))
                         .load::<Report>(&self.pool.get()?)?;

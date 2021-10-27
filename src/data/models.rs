@@ -68,11 +68,11 @@ impl From<Report> for report::IdentifiedReportMessage {
             timestamp: f.timestamp,
             reporter: f.reporter,
             reported: f.reported,
-            handler: f.handler.unwrap_or("".to_owned()),
+            handler: f.handler.unwrap_or_else(|| "".to_owned()),
             handle_ts: f.handle_ts.unwrap_or(-1),
-            comment: f.comment.unwrap_or("".to_owned()),
+            comment: f.comment.unwrap_or_else(|| "".to_owned()),
             desc: f.description,
-            tags: f.tags.unwrap_or("".to_owned()),
+            tags: f.tags.unwrap_or_else(|| "".to_owned()),
         }
     }
 }
