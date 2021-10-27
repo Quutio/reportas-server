@@ -14,11 +14,23 @@ use service::*;
 use report::report_handler_server::ReportHandlerServer;
 
 use tonic::transport::Server;
-use tracing::{debug, info};
+use tracing::{debug, info, Level};
+
+fn setup_log() {
+    if cfg!(debug_assertions) {
+        tracing_subscriber::fmt()
+            .with_max_level(Level::DEBUG)
+            .init();
+    } else {
+        tracing_subscriber::fmt()
+            .init();
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt::init();
+
+    setup_log();
 
     let matches = App::new("reportas-server")
         .version("0.1.0")
