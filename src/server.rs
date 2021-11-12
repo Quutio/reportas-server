@@ -22,14 +22,12 @@ fn setup_log() {
             .with_max_level(Level::DEBUG)
             .init();
     } else {
-        tracing_subscriber::fmt()
-            .init();
+        tracing_subscriber::fmt().init();
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     setup_log();
 
     let matches = App::new("reportas-server")

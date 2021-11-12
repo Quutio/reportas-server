@@ -12,6 +12,7 @@ pub enum Error {
     InvalidTimestamp,
 }
 
+/// Handle reports.
 pub struct ReportHandler {
     db: PgReportDb,
     transporter: Transporter,
