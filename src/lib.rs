@@ -23,7 +23,7 @@ pub mod report {
     tonic::include_proto!("report");
 }
 
-// Comment .
+// Comment ..
 
 ///
 /// Specify type kind of query to execute.
