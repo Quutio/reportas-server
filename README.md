@@ -1,4 +1,4 @@
-# <!> reportas-server
+# < ! > reportas-server
 > A gRPC-based reporting system
 
 Reportas-server is a part of a wider Reportas ecosystem. 
