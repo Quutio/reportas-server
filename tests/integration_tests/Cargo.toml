@@ -1,0 +1,28 @@
+[package]
+name = "integration-tests"
+version = "0.1.0"
+authors = [ "osk <svn.gv@protonmail.com>" ]
+
+[dependencies]
+tonic = "0.4"
+prost = "0.7"
+futures-core = "0.3"
+futures-util = "0.3"
+warp = "0.3"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+async-stream = "0.2"
+tracing = "0.1.23"
+tracing-subscriber = "0.2"
+thiserror = "1.0"
+clap = "2.33.3"
+uuid = { version = "0.8.1", features = ["serde", "v4"] }
+diesel = { version = "1.4.7", features = ["postgres", "r2d2", "chrono"] }
+dotenv = "0.15.0"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.5.8"
+
+[build-dependencies]
+tonic-build = "0.4"

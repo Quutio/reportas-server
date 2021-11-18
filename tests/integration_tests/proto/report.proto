@@ -1,0 +1,85 @@
+
+syntax = "proto3";
+
+package report;
+
+message ReportMessage {
+
+    string reporter = 1;
+    string reported = 2;
+
+    string desc = 3;
+    string tags = 4;
+
+}
+
+message IdentifiedReportMessage {
+
+    int64 id = 1;
+
+    bool active = 2;
+    int64 timestamp = 3;
+
+    string reporter = 4;
+    string reported = 5;
+
+    string handler = 6;
+    int64 handle_ts = 7;
+    string comment = 8;
+
+    string desc = 9;
+    string tags = 10;
+}
+
+message ReportRequest {
+    ReportMessage msg = 1;
+}
+
+message ReportDeactivateRequest {
+    int64 id = 1;
+    string operator = 2;
+    string comment = 3;
+}
+
+message ReportResponse {
+    ReportMessage msg = 1;
+}
+
+message ReportQuery {
+    string query = 1;
+    int64 id = 2;
+}
+
+message ReportId {
+    int64 id = 1;
+}
+
+message TransportStatus {
+    int64 code = 1;
+}
+
+service ReportHandler {
+
+    rpc SubmitReport (ReportRequest) returns (IdentifiedReportMessage);
+    rpc DeactivateReport (ReportDeactivateRequest) returns (IdentifiedReportMessage);
+
+    rpc QueryAllReports (ReportQuery) returns (stream IdentifiedReportMessage);
+
+    rpc QueryReportsByReporter (ReportQuery) returns (stream IdentifiedReportMessage);
+    rpc QueryReportsByReported (ReportQuery) returns (stream IdentifiedReportMessage);
+
+    rpc QueryReportsByActive (ReportQuery) returns (stream IdentifiedReportMessage);
+
+    rpc QueryReportsByHandler (ReportQuery) returns (stream IdentifiedReportMessage);
+    rpc QueryReportsByHandleTimestamp (ReportQuery) returns (stream IdentifiedReportMessage);
+
+    rpc QueryReportsByTimestamp (ReportQuery) returns (stream IdentifiedReportMessage);
+
+    rpc QueryReportById (ReportQuery) returns (IdentifiedReportMessage);
+}
+
+service ReportTransporter {
+
+    rpc BroadcastReport (IdentifiedReportMessage) returns (TransportStatus);
+    rpc BroadcastDeactivate (IdentifiedReportMessage) returns (TransportStatus);
+}
