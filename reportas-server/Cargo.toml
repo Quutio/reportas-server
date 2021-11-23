@@ -1,6 +1,6 @@
 [package]
 name = "reportas-server"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["osk <svn.gv@protonmail.com>"]
 edition = "2018"
 
@@ -15,12 +15,13 @@ futures-util = "0.3"
 warp = "0.3"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
-async-stream = "0.2"
+async-stream = "0.3"
 tracing = "0.1.23"
 tracing-subscriber = "0.2"
 thiserror = "1.0"
 clap = "2.33.3"
 uuid = { version = "0.8.1", features = ["serde", "v4"] }
+tokio-diesel = { git = "https://github.com/mehcode/tokio-diesel", branch = "master" }
 diesel = { version = "1.4.7", features = ["postgres", "r2d2", "chrono"] }
 dotenv = "0.15.0"
 chrono = "0.4"

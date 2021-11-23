@@ -37,23 +37,23 @@ impl ReportHandler {
         let utc = chrono::Utc::now();
         let ts = utc.timestamp();
 
-        let tags: Option<&str>;
+        let tags: Option<String>;
         if req.tags.is_empty() {
             tags = None;
         } else {
-            tags = Some(&req.tags)
+            tags = Some(req.tags)
         }
 
         let new_report = NewReport {
             active: true,
             timestamp: ts,
-            reporter: req.reporter.as_str(),
-            reported: req.reported.as_str(),
-            description: req.desc.as_str(),
+            reporter: req.reporter,
+            reported: req.reported,
+            description: req.desc,
             tags,
         };
 
-        let rep = match self.db.insert_report(&new_report).await {
+        let rep = match self.db.insert_report(new_report.clone()).await {
             Ok(val) => val,
             Err(_) => return Err(Error::DatabaseFailed),
         };
@@ -69,7 +69,7 @@ impl ReportHandler {
     pub async fn deactivate_report(&self, req: ReportDeactivateRequest) -> Result<Report, Error> {
         let rep = match self
             .db
-            .deactivate_report(req.id, &req.operator, req.comment.as_deref())
+            .deactivate_report(req.id, req.operator, req.comment)
             .await
         {
             Ok(val) => val,
