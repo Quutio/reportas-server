@@ -77,15 +77,15 @@ impl From<Report> for report::IdentifiedReportMessage {
     }
 }
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Clone, Insertable)]
 #[table_name = "reports"]
-pub struct NewReport<'a> {
+pub struct NewReport {
     pub active: bool,
     pub timestamp: i64,
-    pub reporter: &'a str,
-    pub reported: &'a str,
-    pub description: &'a str,
-    pub tags: Option<&'a str>,
+    pub reporter: String,
+    pub reported: String,
+    pub description: String,
+    pub tags: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
