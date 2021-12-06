@@ -46,8 +46,6 @@ RUN chown -R $APP_USER:$APP_USER ${APP}
 USER $APP_USER
 WORKDIR ${APP}
 
-RUN ls -ahl
-
 CMD ./server --address ${LISTEN_ADDR} --port ${LISTEN_PORT}
 
 
