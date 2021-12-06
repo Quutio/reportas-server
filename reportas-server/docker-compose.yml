@@ -1,6 +1,8 @@
 version: '3'
+
 services:
   database:
+    container_name: reportas_db
     image: "postgres:alpine"
     ports:
       - "5432:5432"
@@ -8,6 +10,14 @@ services:
       - database.env
     volumes:
       - database-data:/var/lib/postgresql/reportas/data/
-
+  reportas:
+    container_name: reportas
+    image: "reportas-debian"
+    environment:
+      - DATABASE_URL=postgresql://reportas:passwd@reportas_db:5432/reportas
+      - LISTEN_ADDR=0.0.0.0
+    ports:
+      - "50051:50051"
 volumes:
   database-data:
+
