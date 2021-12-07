@@ -5,10 +5,10 @@ steps:
 - name: build & test
   image: rust:1-buster
   commands:
-  - rustup component add rustfmt
-  - cargo build --all
-  - cargo test --all
-- name: publish
+#  - rustup component add rustfmt
+#  - cargo build --all
+#  - cargo test --all
+- name: docker
   image: plugins/docker
   settings:
     repo: x7gv/reportas-server
