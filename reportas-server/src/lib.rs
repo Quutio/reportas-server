@@ -12,6 +12,7 @@ use diesel::{insert_into, pg::PgConnection, update};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 
 use tokio::sync::RwLock;
+use tokio_diesel::AsyncRunQueryDsl;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -44,15 +45,15 @@ pub trait ReportDb<M>
 where
     M: diesel::r2d2::ManageConnection,
 {
-    async fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>>;
+    async fn insert_report(&self, new_report: NewReport) -> Result<Report, Box<dyn Error>>;
 
     async fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>>;
 
     async fn deactivate_report(
         &self,
         id: i64,
-        operator: &str,
-        comment: Option<&str>,
+        operator: String,
+        comment: Option<String>,
     ) -> Result<Report, Box<dyn Error>>;
 }
 
@@ -100,12 +101,14 @@ impl PgReportDb {
 
 #[tonic::async_trait]
 impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
-    async fn insert_report(&self, new_report: &NewReport) -> Result<Report, Box<dyn Error>> {
+    async fn insert_report(&self, new_report: NewReport) -> Result<Report, Box<dyn Error>> {
         use schema::reports::dsl::*;
+
+        // let rep = new_report.clone();
 
         let res = insert_into(reports)
             .values(new_report)
-            .get_result::<Report>(&self.pool.get()?)?;
+            .get_result_async::<Report>(&self.pool).await?;
 
         self.insert_to_cache(res.clone()).await;
 
@@ -115,8 +118,8 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
     async fn deactivate_report(
         &self,
         identifier: i64,
-        operator: &str,
-        ccomment: Option<&str>,
+        operator: String,
+        ccomment: Option<String>,
     ) -> Result<Report, Box<dyn Error>> {
         use schema::reports::dsl::*;
 
@@ -125,21 +128,21 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
 
         update(reports.filter(id.eq(identifier)))
             .set(active.eq(false))
-            .execute(&self.pool.get()?)?;
+            .execute_async(&self.pool).await?;
 
         update(reports.filter(id.eq(identifier)))
             .set(handler.eq(operator))
-            .execute(&self.pool.get()?)?;
+            .execute_async(&self.pool).await?;
 
         if let Some(comm) = ccomment {
             update(reports.filter(id.eq(identifier)))
                 .set(comment.eq(comm))
-                .execute(&self.pool.get()?)?;
+                .execute_async(&self.pool).await?;
         }
 
         let res = update(reports.filter(id.eq(identifier)))
             .set(handle_ts.eq(ts))
-            .get_result::<Report>(&self.pool.get()?)?;
+            .get_result_async::<Report>(&self.pool).await?;
 
         self.insert_to_cache(res.clone()).await;
 
@@ -153,13 +156,6 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
     ///
     /// * `query_type` - `QueryType` enum with a required value.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use service::models::QueryType;
-    ///
-    /// let queried = query_report(QueryType::ById(420));
-    /// ```
     ///
     async fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
         use schema::reports::dsl::*;
@@ -171,7 +167,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 let cached: Vec<Report> = self.cache.read().await.values().cloned().collect();
 
                 if cached.is_empty() {
-                    res = reports.load(&self.pool.get()?)?;
+                    res = reports.load_async(&self.pool).await?;
                 } else {
                     res = cached;
                 }
@@ -193,7 +189,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 if cached.is_empty() {
                     res = reports
                         .filter(reporter.eq(value))
-                        .load::<Report>(&self.pool.get()?)?;
+                        .load_async::<Report>(&self.pool).await?;
                 } else {
                     res = cached;
                 }
@@ -215,7 +211,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 if cached.is_empty() {
                     res = reports
                         .filter(reported.eq(value))
-                        .load::<Report>(&self.pool.get()?)?;
+                        .load_async::<Report>(&self.pool).await?;
                 } else {
                     res = cached;
                 }
@@ -237,7 +233,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 if cached.is_empty() {
                     res = reports
                         .filter(timestamp.le(value))
-                        .load::<Report>(&self.pool.get()?)?;
+                        .load_async::<Report>(&self.pool).await?;
                 } else {
                     res = cached;
                 }
@@ -259,7 +255,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 if cached.is_empty() {
                     res = reports
                         .filter(id.eq(value))
-                        .load::<Report>(&self.pool.get()?)?;
+                        .load_async::<Report>(&self.pool).await?;
                 } else {
                     res = cached;
                 }
@@ -281,7 +277,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 if cached.is_empty() {
                     res = reports
                         .filter(active.eq(true))
-                        .load::<Report>(&self.pool.get()?)?
+                        .load_async::<Report>(&self.pool).await?
                 } else {
                     res = cached;
                 }
@@ -303,7 +299,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 if cached.is_empty() {
                     res = reports
                         .filter(handler.eq(value))
-                        .load::<Report>(&self.pool.get()?)?;
+                        .load_async::<Report>(&self.pool).await?;
                 } else {
                     res = cached;
                 }
@@ -325,7 +321,7 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 if cached.is_empty() {
                     res = reports
                         .filter(handle_ts.eq(value))
-                        .load::<Report>(&self.pool.get()?)?;
+                        .load_async::<Report>(&self.pool).await?;
                 } else {
                     res = cached;
                 }

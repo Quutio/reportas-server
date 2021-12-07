@@ -41,19 +41,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         matches.value_of("port").unwrap()
     );
 
-    /*
-
-    let msg = transporter::report::IdentifiedReportMessage {
-        id: 1,
-        reporter: "jeajea".into(),
-        reported: "joujea".into(),
-        desc: "jdsojdoasjdoja".into(),
-    };
-
-    transporter::transport(msg).await?;
-
-    */
-
     let mut client = ReportHandlerClient::connect(domain).await?;
 
     let msg = ReportMessage {
@@ -63,11 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tags: "jeast,joust".into(),
     };
 
-    let request = tonic::Request::new(ReportRequest { msg: Some(msg) });
-
-    let resp = client.submit_report(request).await?;
-
-    println!("RESPONSE: {:?}", resp);
+    for _ in 0..100 {
+        let request = tonic::Request::new(ReportRequest { msg: Some(msg.clone()) });
+        client.submit_report(request).await?;
+    }
 
     /*
     match matches.value_of("jobs").unwrap() {
