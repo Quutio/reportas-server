@@ -2,9 +2,17 @@ kind: pipeline
 name: default
 
 steps:
-- name: test
+- name: build & test
   image: rust:1-buster
   commands:
   - rustup component add rustfmt
-  - cargo build --verbose --all
-  - cargo test --verbose --all
+  - cargo build --all
+  - cargo test --all
+- name: publish
+  image: plugins/docker
+  settings:
+    repo: x7gv/reportas-server
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
