@@ -12,9 +12,7 @@ steps:
   image: plugins/docker
   settings:
     repo: x7gv/reportas-server
-    tags:
-      - ${DRONE_COMMIT_BRANCH}
-      - latest
+    auto_tag: true
     username:
       from_secret: docker_username
     password:
