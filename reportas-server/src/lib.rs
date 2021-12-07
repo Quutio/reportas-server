@@ -156,13 +156,6 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
     ///
     /// * `query_type` - `QueryType` enum with a required value.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use service::models::QueryType;
-    ///
-    /// let queried = query_report(QueryType::ById(420));
-    /// ```
     ///
     async fn query_report(&self, query_type: QueryType) -> Result<Vec<Report>, Box<dyn Error>> {
         use schema::reports::dsl::*;
