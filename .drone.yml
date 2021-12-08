@@ -2,7 +2,7 @@ kind: pipeline
 name: default
 
 steps:
-- name: build & test
+- name: build
   image: rust:1-buster
   commands:
   - rustup component add rustfmt
@@ -17,3 +17,8 @@ steps:
       from_secret: docker_username
     password:
       from_secret: docker_password
+
+trigger:
+  branch:
+    - master
+    - dev
