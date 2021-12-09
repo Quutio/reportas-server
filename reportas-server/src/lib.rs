@@ -81,6 +81,7 @@ impl PgReportDb {
         if deactive {
             to_cache = reports.load(&self.pool.get()?)?;
         } else {
+
             to_cache = reports
                 .filter(active.eq(true))
                 .load::<Report>(&self.pool.get()?)?;

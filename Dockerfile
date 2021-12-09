@@ -26,6 +26,8 @@ ARG LISTEN_ADDR="[::1]"
 ENV LISTEN_PORT=${LISTEN_PORT}
 ENV LISTEN_ADDR=${LISTEN_ADDR}
 
+ENV DATABASE_ADDR="localhost"
+ENV DATABASE_PORT=5432
 ENV DATABASE_URL="postgresql://reportas:passwd@localhost:5432/reportas"
 ENV RUST_LOG="INFO"
 
@@ -37,16 +39,12 @@ RUN groupadd $APP_USER \
   && useradd -g $APP_USER $APP_USER \
   && mkdir -p ${APP}
 
-RUN apt-get update && apt-get -y install libpq-dev
+RUN apt-get update && apt-get -y install libpq-dev && apt-get -y install postgresql
 
 COPY --from=builder /reportas-server/target/release/server ${APP}/server
-
-RUN chown -R $APP_USER:$APP_USER ${APP}
+COPY --from=builder /reportas-server/migrations/latest_reports/up.sql ${APP}/up.sql
 
 USER $APP_USER
 WORKDIR ${APP}
 
-CMD ./server --address ${LISTEN_ADDR} --port ${LISTEN_PORT}
-
-
-
+CMD sleep 5 && psql ${DATABASE_URL} -f ./up.sql && ./server --address ${LISTEN_ADDR} --port ${LISTEN_PORT}

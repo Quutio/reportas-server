@@ -21,6 +21,7 @@ pub struct ReportHandler {
 impl ReportHandler {
     pub async fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let db = PgReportDb::new(addr).unwrap();
+
         db.load_to_cache(false).await?;
 
         let addrs = vec!["http://[::1]:50024", "http://[::1]:50025"];
