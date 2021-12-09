@@ -12,7 +12,7 @@ steps:
   image: plugins/docker
   settings:
     repo: x7gv/reportas-server
-    auto_tag: true
+    tags: [ "${DRONE_COMMIT_SHA:0:7}","latest" ]
     username:
       from_secret: docker_username
     password:
