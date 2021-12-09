@@ -3,9 +3,9 @@
     <h1>REPORTAS-SERVER</h1>
     <h3><!> A gRPC-based reporting system.</h3>
 
-    [![Build Status](http://drone.7gv.io/api/badges/quutio/reportas-server/status.svg)](http://drone.7gv.io/quutio/reportas-server)
-
 </div>
+
+[![Build Status](http://drone.7gv.io/api/badges/quutio/reportas-server/status.svg)](http://drone.7gv.io/quutio/reportas-server)
 
 # Reportas-Server
 
