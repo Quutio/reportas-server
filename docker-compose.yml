@@ -12,7 +12,7 @@ services:
       - database-data:/var/lib/postgresql/reportas/data/
   reportas:
     container_name: reportas
-    image: "reportas-test0"
+    image: "x7gv/reportas-server:latest"
     environment:
       - DATABASE_ADDR=reportas_db
       - DATABASE_URL=postgresql://reportas:passwd@reportas_db:5432/reportas
