@@ -2,6 +2,58 @@ use crate::schema::reports;
 
 use crate::report;
 
+pub mod one {
+
+    use chrono::NaiveDateTime;
+    use prost_types::Timestamp;
+
+    use crate::report1_0;
+
+    pub struct Report {
+        pub id: i64,
+        pub active: bool,
+        pub timestamp: chrono::NaiveDateTime,
+
+        pub reporter: String,
+        pub reported: String,
+
+        pub handler: Option<String>,
+        pub handle_timestamp: Option<NaiveDateTime>,
+        pub comment: Option<String>,
+
+        pub description: String,
+        pub tags: Option<Vec<String>>,
+    }
+
+    pub struct Tag {
+        tag: String,
+    }
+
+    pub fn ts2dt(source: Timestamp) -> chrono::NaiveDateTime {
+        NaiveDateTime::from_timestamp(source.seconds, 0)
+    }
+
+    impl From<report1_0::IdentifiedReport> for Report {
+        fn from(from: report1_0::IdentifiedReport) -> Self {
+
+            let report = from.report.unwrap();
+
+            Self {
+                id: from.id,
+                active: from.active,
+                timestamp: from.insert_timestamp.map(|ts| Some(ts2dt(ts))).unwrap().unwrap(),
+                reporter: report.reporter,
+                reported: report.reported,
+                handler: { if !from.handler.is_empty() { Some(from.handler) } else { None } },
+                handle_timestamp: from.handle_timestamp.map(|ts| Some(ts2dt(ts))).unwrap(),
+                comment: {if !from.comment.is_empty() { Some(from.comment)} else { None }},
+                description: report.description,
+                tags: None,
+            }
+        }
+    }
+}
+
 #[derive(Queryable, Debug, Clone, PartialEq)]
 pub struct Report {
     pub id: i64,

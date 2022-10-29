@@ -1147,6 +1147,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "prost 0.11.0",
+ "prost-types 0.11.1",
  "serde",
  "serde_json",
  "thiserror",

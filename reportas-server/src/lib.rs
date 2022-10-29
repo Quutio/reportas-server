@@ -20,6 +20,10 @@ use std::sync::Arc;
 
 use self::models::{NewReport, Report};
 
+pub mod report1_0 {
+    tonic::include_proto!("report1_0");
+}
+
 pub mod report {
     tonic::include_proto!("report");
 }
