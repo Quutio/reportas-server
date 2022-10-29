@@ -4,12 +4,27 @@ package report1_0;
 
 import "google/protobuf/timestamp.proto";
 
+service ReportHandler {
+
+    rpc InsertReport(ReportInsertRequest) returns (ReportInsertResponse);
+    rpc DeactivateReport(ReportDeactivateRequest) returns (ReportDeactivateResponse);
+
+    rpc QueryReport(ReportQueryRequest) returns (ReportQueryResponse);
+
+    rpc SubscribeReport(ReportSubscribeRequest) returns (stream ReportBroadcast);
+}
+
 message Report {
     string reporter = 1;
     string reported = 2;
 
-    string description = 3;
-    Tags tags = 4;
+    oneof server {
+        ServerNode node = 3;
+        ServerNodeConstant constant = 4;
+    }
+
+    string description = 5;
+    Tags tags = 6;
 }
 
 message IdentifiedReport {
@@ -34,20 +49,67 @@ message ReportInsertResponse {
 }
 
 message ReportSubscribeRequest {
-
+    ReportSubscribeFilter filter = 1;
 }
 
 message ReportSubscribeFilter {
+    oneof server {
+        ServerNode node = 1;
+        ServerNodeConstant constant = 2;
+    }
+}
 
+message ReportDeactivateRequest {
+    int64 id = 1;
+    string handler = 2;
+    string comment = 3;
+}
+
+message ReportDeactivateResponse {
+    IdentifiedReport report = 1;
+}
+
+message ReportQueryRequest {
+    oneof filter {
+        bool ALL = 1;
+        ReportFilterSet filters = 2;
+    }
+}
+
+message ReportQueryResponse {
+    repeated IdentifiedReport reports = 1;
+}
+
+message ReportFilterSet {
+    repeated ReportFilter filters = 1;
+}
+
+message ReportFilter {
+    oneof predicate {
+        int64 id = 1;
+        string reported = 2;
+        string reporter = 3;
+        bool active = 4;
+        string handler = 5;
+        google.protobuf.Timestamp insert_timestamp = 6;
+        google.protobuf.Timestamp handle_timestamp = 7;
+    }
+}
+
+message ReportBroadcast {
+    oneof operation {
+        IdentifiedReport insert = 1;
+        IdentifiedReport deactivate = 2;
+    }
 }
 
 message ServerNode {
-    string network = 1;
     string identifier = 2;
 }
 
 enum ServerNodeConstant {
     GLOBAL = 0;
+    UNDEFINED = 1;
 }
 
 message Tags {
