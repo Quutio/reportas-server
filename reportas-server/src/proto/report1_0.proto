@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package report1_0;
+
+import "google/protobuf/timestamp.proto";
+
+message Report {
+    string reporter = 1;
+    string reported = 2;
+
+    string description = 3;
+    Tags tags = 4;
+}
+
+message IdentifiedReport {
+    int64 id = 1;
+
+    bool active = 2;
+    google.protobuf.Timestamp insert_timestamp = 3;
+
+    string handler = 6;
+    google.protobuf.Timestamp handle_timestamp = 7;
+    string comment = 8;
+
+    Report report = 9;
+}
+
+message ReportInsertRequest {
+    Report report = 1;
+}
+
+message ReportInsertResponse {
+    IdentifiedReport report = 1;
+}
+
+message ReportSubscribeRequest {
+
+}
+
+message ReportSubscribeFilter {
+
+}
+
+message ServerNode {
+    string network = 1;
+    string identifier = 2;
+}
+
+enum ServerNodeConstant {
+    GLOBAL = 0;
+}
+
+message Tags {
+    repeated Tag tags = 1;
+}
+
+message Tag {
+    string tag = 1;
+}
