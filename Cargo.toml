@@ -2,5 +2,6 @@
 members = [
     "reportas-server",
     "tests/integration_tests",
+    "tests/persistence",
 ]
 

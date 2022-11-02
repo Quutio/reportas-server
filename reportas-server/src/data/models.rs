@@ -22,7 +22,7 @@ pub mod one {
         pub comment: Option<String>,
 
         pub description: String,
-        pub tags: Option<Vec<String>>,
+        pub tags: Option<Vec<Tag>>,
     }
 
     pub struct Tag {

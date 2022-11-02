@@ -10,14 +10,14 @@ services:
       - database.env
     volumes:
       - database-data:/var/lib/postgresql/reportas/data/
-  reportas:
-    container_name: reportas
-    image: "x7gv/reportas-server:latest"
-    environment:
-      - DATABASE_ADDR=reportas_db
-      - DATABASE_URL=postgresql://reportas:passwd@reportas_db:5432/reportas
-      - LISTEN_ADDR=0.0.0.0
-    ports:
-      - "50051:50051"
+#  reportas:
+#    container_name: reportas
+#    image: "x7gv/reportas-server:latest"
+#    environment:
+#      - DATABASE_ADDR=reportas_db
+#      - DATABASE_URL=postgresql://reportas:passwd@reportas_db:5432/reportas
+#      - LISTEN_ADDR=0.0.0.0
+#    ports:
+#      - "50051:50051"
 volumes:
   database-data:
