@@ -1,0 +1,49 @@
+\dt
+SELECT * FROM reports;
+DROP TABLE reports;
+q
+\q
+\d
+SHOW TABLES;
+\t
+\t
+\dt
+\dt
+SELECT * FROM reports;
+SELECT * FROM reports;
+SELECT * FROM tags;
+SELECT * FROM tags WHERE content IN (SELECT UNNEST(ARRAY["test", "test0", "tess"])) INSERT INTO tags (content) VALUES (SELECT UNNEST(ARRAY["test", "test0", "tess"])) RETURNING *;
+SELECT * FROM tags WHERE content IN (SELECT UNNEST(ARRAY["test", "test0", "tess"])); INSERT INTO tags (content) VALUES (SELECT UNNEST(ARRAY["test", "test0", "tess"])) RETURNING *;
+SELECT * FROM tags WHERE content IN (SELECT UNNEST(ARRAY["test", "test0", "tess"])) INSERT INTO tags (content) VALUES (SELECT UNNEST(ARRAY["test", "test0", "tess"])) RETURNING *;
+INSERT INTO tags (content) VALUES (UNNEST(ARRAY["test", "test0", "tess"]))
+SELECT * FROM tags WHERE content in (SELECT UNNEST(ARRAY["test", "test0", "tess"]))
+;
+INSERT INTO tags (content) VALUES (UNNEST(ARRAY["test", "test0", "tess"]))
+SELECT * FROM tags WHERE content in (SELECT UNNEST(ARRAY["test", "test0", "tess"]));
+BEGIN;
+INSERT INTO tags (content) VALUES (UNNEST(ARRAY["test", "test0", "tess"]));
+INSERT INTO tags (content) VALUES (SELECT UNNEST(ARRAY["test", "test0", "tess"]));
+INSERT INTO tags (content) VALUES (UNNEST(ARRAY["test", "test0", "tess"]));
+COMMIT;
+BEGIN;
+INSERT INTO tags (content) VALUES (SELECT * FROM UNNEST(ARRAY["test", "test0", "tess"]));
+COMMIT;
+BEGIN;
+INSERT INTO tags (content) SELECT * FROM UNNEST(ARRAY["test", "test0", "tess"]);
+COMMIT;
+BEGIN;
+INSERT INTO tags (content) SELECT * FROM UNNEST(ARRAY['test', 'test0', 'tess']);
+SELECT * FROM tags WHERE content in (SELECT UNNEST(ARRAY['test', 'test0', 'tess']));
+BEGIN;
+COMMIT;
+BEGIN;
+INSERT INTO tags (content) SELECT * FROM UNNEST(ARRAY['test', 'test0', 'tess']) ON CONFLICT DO NOTHING;
+SELECT * FROM tags WHERE content in (SELECT UNNEST(ARRAY['test', 'test0', 'tess']));
+COMMIT;
+SELECT * FROM tags;
+SELECT * FROM tagmap;
+SELECT * FROM tagmap;
+SELECT * FROM tagmap;
+SELECT * FROM tagmap;
+\dt reports
+\s reports
