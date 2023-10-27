@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package report1_0;
+
+import "google/protobuf/timestamp.proto";
+
+service ReportHandler {
+
+    rpc InsertReport(ReportInsertRequest) returns (ReportInsertResponse);
+    rpc DeactivateReport(ReportDeactivateRequest) returns (ReportDeactivateResponse);
+
+    rpc QueryReport(ReportQueryRequest) returns (ReportQueryResponse);
+
+    rpc SubscribeReport(ReportSubscribeRequest) returns (stream ReportBroadcast);
+}
+
+message ReportStub {
+    string reporter = 1;
+    string reported = 2;
+
+    oneof server {
+        ServerNode node = 3;
+        ServerNodeConstant constant = 4;
+    }
+
+    string description = 5;
+    Tags tags = 6;
+}
+
+message Report {
+    int64 id = 1;
+
+    bool active = 2;
+    google.protobuf.Timestamp insert_timestamp = 3;
+
+    string handler = 6;
+    google.protobuf.Timestamp handle_timestamp = 7;
+    string comment = 8;
+
+    ReportStub report = 9;
+}
+
+message ReportInsertRequest {
+    ReportStub report = 1;
+}
+
+message ReportInsertResponse {
+    Report report = 1;
+}
+
+message ReportSubscribeRequest {
+    ReportSubscribeFilter filter = 1;
+}
+
+message ReportSubscribeFilter {
+    oneof server {
+        ServerNode node = 1;
+        ServerNodeConstant constant = 2;
+    }
+}
+
+message ReportDeactivateRequest {
+    int64 id = 1;
+    string handler = 2;
+    string comment = 3;
+}
+
+message ReportDeactivateResponse {
+    Report report = 1;
+}
+
+message ReportQueryRequest {
+    oneof filter {
+        bool ALL = 1;
+        ReportFilterPattern pattern = 2;
+    }
+}
+
+message ReportQueryResponse {
+    repeated Report reports = 1;
+}
+
+message ReportFilterPattern {
+    enum OPERATION {
+        INTERSECTION = 0;
+        UNION = 1;
+        COMPLEMENT = 2;
+    }
+
+    message ReportFilter {
+        message IntegerFilter {
+            oneof condition {
+                int64 equals = 1;
+                int64 greater_than = 2;
+                int64 less_than = 3;
+                int64 greater_than_equal = 4;
+                int64 less_than_equal = 5;
+            }
+        }
+
+        message TimestampFilter {
+            oneof condition {
+                google.protobuf.Timestamp equals = 1;
+                google.protobuf.Timestamp greater_than = 2;
+                google.protobuf.Timestamp less_than = 3;
+                google.protobuf.Timestamp greater_than_equal = 4;
+                google.protobuf.Timestamp less_than_equal = 5;
+            }
+        }
+
+        oneof condition {
+            IntegerFilter id = 1;
+            string reported = 2;
+            string reporter = 3;
+            bool active = 4;
+            string handler = 5;
+            TimestampFilter insert_timestamp = 6;
+            TimestampFilter handle_timestamp = 7;
+        }
+    }
+
+    message CompositeFilter {
+        OPERATION operation = 1;
+        repeated FilterItem items = 2;
+
+        message FilterItem {
+            oneof type {
+                ReportFilter single = 1;
+                CompositeFilter composite = 2;
+            }
+        }
+    }
+
+    oneof primary_condition {
+        CompositeFilter composite_filter = 1;
+        ReportFilter single_filter = 2;
+    }
+}
+
+message ReportBroadcast {
+    oneof operation {
+        Report insert = 1;
+        Report deactivate = 2;
+    }
+}
+
+message ServerNode {
+    string identifier = 2;
+}
+
+enum ServerNodeConstant {
+    GLOBAL = 0;
+    UNDEFINED = 1;
+}
+
+message Tags {
+    repeated Tag tags = 1;
+}
+
+message Tag {
+    string tag = 1;
+}
+

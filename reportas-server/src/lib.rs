@@ -120,40 +120,6 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
         Ok(res)
     }
 
-    async fn deactivate_report(
-        &self,
-        identifier: i64,
-        operator: String,
-        ccomment: Option<String>,
-    ) -> Result<Report, Box<dyn Error>> {
-        use schema::reports::dsl::*;
-
-        let utc = chrono::Utc::now();
-        let ts = utc.timestamp();
-
-        update(reports.filter(id.eq(identifier)))
-            .set(active.eq(false))
-            .execute_async(&self.pool).await?;
-
-        update(reports.filter(id.eq(identifier)))
-            .set(handler.eq(operator))
-            .execute_async(&self.pool).await?;
-
-        if let Some(comm) = ccomment {
-            update(reports.filter(id.eq(identifier)))
-                .set(comment.eq(comm))
-                .execute_async(&self.pool).await?;
-        }
-
-        let res = update(reports.filter(id.eq(identifier)))
-            .set(handle_ts.eq(ts))
-            .get_result_async::<Report>(&self.pool).await?;
-
-        self.insert_to_cache(res.clone()).await;
-
-        Ok(res)
-    }
-
     ///
     /// Query reports by a query type.
     ///
@@ -336,6 +302,40 @@ impl ReportDb<ConnectionManager<PgConnection>> for PgReportDb {
                 }
             }
         }
+
+        Ok(res)
+    }
+
+    async fn deactivate_report(
+        &self,
+        identifier: i64,
+        operator: String,
+        ccomment: Option<String>,
+    ) -> Result<Report, Box<dyn Error>> {
+        use schema::reports::dsl::*;
+
+        let utc = chrono::Utc::now();
+        let ts = utc.timestamp();
+
+        update(reports.filter(id.eq(identifier)))
+            .set(active.eq(false))
+            .execute_async(&self.pool).await?;
+
+        update(reports.filter(id.eq(identifier)))
+            .set(handler.eq(operator))
+            .execute_async(&self.pool).await?;
+
+        if let Some(comm) = ccomment {
+            update(reports.filter(id.eq(identifier)))
+                .set(comment.eq(comm))
+                .execute_async(&self.pool).await?;
+        }
+
+        let res = update(reports.filter(id.eq(identifier)))
+            .set(handle_ts.eq(ts))
+            .get_result_async::<Report>(&self.pool).await?;
+
+        self.insert_to_cache(res.clone()).await;
 
         Ok(res)
     }

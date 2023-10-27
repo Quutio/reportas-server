@@ -10,15 +10,15 @@ CREATE TABLE reports (
     comment text,
     description text not null,
     tags text
-)
+);
 
 CREATE TABLE tags (
     id bigserial primary key,
     content text
-)
+);
 
 CREATE TABLE tagmap (
     id bigserial primary key,
     report_id bigint references reports(id),
     tag_id bigint references tags(id)
-)
+);

@@ -72,7 +72,7 @@ message ReportDeactivateResponse {
 message ReportQueryRequest {
     oneof filter {
         bool ALL = 1;
-        ReportFilterSet filters = 2;
+        ReportFilterPattern pattern = 2;
     }
 }
 
@@ -80,19 +80,60 @@ message ReportQueryResponse {
     repeated IdentifiedReport reports = 1;
 }
 
-message ReportFilterSet {
-    repeated ReportFilter filters = 1;
-}
+message ReportFilterPattern {
+    enum OPERATION {
+        INTERSECTION = 0;
+        UNION = 1;
+        COMPLEMENT = 2;
+    }
 
-message ReportFilter {
-    oneof predicate {
-        int64 id = 1;
-        string reported = 2;
-        string reporter = 3;
-        bool active = 4;
-        string handler = 5;
-        google.protobuf.Timestamp insert_timestamp = 6;
-        google.protobuf.Timestamp handle_timestamp = 7;
+    message ReportFilter {
+        message IntegerFilter {
+            oneof condition {
+                int64 equals = 1;
+                int64 greater_than = 2;
+                int64 less_than = 3;
+                int64 greater_than_equal = 4;
+                int64 less_than_equal = 5;
+            }
+        }
+
+        message TimestampFilter {
+            oneof condition {
+                google.protobuf.Timestamp equals = 1;
+                google.protobuf.Timestamp greater_than = 2;
+                google.protobuf.Timestamp less_than = 3;
+                google.protobuf.Timestamp greater_than_equal = 4;
+                google.protobuf.Timestamp less_than_equal = 5;
+            }
+        }
+
+        oneof condition {
+            IntegerFilter id = 1;
+            string reported = 2;
+            string reporter = 3;
+            bool active = 4;
+            string handler = 5;
+            TimestampFilter insert_timestamp = 6;
+            TimestampFilter handle_timestamp = 7;
+        }
+    }
+
+    message CompositeFilter {
+        OPERATION operation = 1;
+        repeated FilterItem items = 2;
+
+        message FilterItem {
+            oneof type {
+                ReportFilter single = 1;
+                CompositeFilter composite = 2;
+            }
+        }
+    }
+
+    oneof primary_condition {
+        CompositeFilter composite_filter = 1;
+        ReportFilter single_filter = 2;
     }
 }
 
@@ -119,3 +160,4 @@ message Tags {
 message Tag {
     string tag = 1;
 }
+
