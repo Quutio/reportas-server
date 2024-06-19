@@ -551,7 +551,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://reportas:passwd@localhost/reportas")
+        .connect("postgres://reportas:passwd@localhost:5432/reportas")
         .await?;
 
     let rdao = ReportDao::with_pool(pool);
