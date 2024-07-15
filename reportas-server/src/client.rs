@@ -1,6 +1,6 @@
 extern crate clap;
-use clap::{App, Arg};
 
+use clap::{App, Arg};
 use report::report_handler_client::ReportHandlerClient;
 use report::{ReportMessage, ReportRequest};
 
@@ -12,6 +12,7 @@ pub mod report {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    
     let matches = App::new("reportas-client")
         .version("0.1.0")
         .author("7Gv")

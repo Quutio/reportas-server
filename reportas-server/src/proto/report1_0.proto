@@ -82,9 +82,9 @@ message ReportQueryResponse {
 
 message ReportFilterPattern {
     enum OPERATION {
-        INTERSECTION = 0;
-        UNION = 1;
-        COMPLEMENT = 2;
+        AND = 0;
+        OR = 1;
+        NOT = 2;
     }
 
     message ReportFilter {
